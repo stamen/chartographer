@@ -28,17 +28,19 @@
   let layers;
 
   $: if (style && style.layers) {
+    const lineLayers = style.layers.filter(l => l.type === 'line');
     height = style.layers.length * 65;
 
     xScale = d3.scaleLinear([minZoom, maxZoom], [margin.left, width - margin.right]);
-    yScale = d3.scaleBand(style.layers.map(({ id }) => id), [margin.top, height - margin.bottom])
+    yScale = d3.scaleBand(lineLayers.map(({ id }) => id), [margin.top, height - margin.bottom])
       .padding(0.25);
 
     zoomLevels = d3.range(minZoom, maxZoom + 1, 1);
 
-    layers = style.layers.map(l => {
+    layers = lineLayers.map(l => {
       const lineStart = xScale(l.minzoom || minZoom);
-      const lineLength = xScale(l.maxzoom || maxZoom) - lineStart;
+      const lineLength = xScale(l.maxzoom || maxZoom) - xScale(l.minzoom ||
+        minZoom);
 
       let color;
       let opacity;
@@ -88,10 +90,15 @@
 
       if (colorIsGradient) {
         const gradientArray = color.slice(3);
+        if (l.id === 'road_motorway-casing') {
+          console.log(gradientArray, l.minzoom);
+        }
 
         for (let i = 0; i < gradientArray.length; i += 2) {
+          const offset = ((xScale(gradientArray[i]) - lineStart) / lineLength) * 100;
+
           gradientStops.push({
-            offset: ((xScale(gradientArray[i]) - lineStart) / lineLength) * 100,
+            offset,
             stopColor: gradientArray[i + 1],
             stopOpacity: 1
           });
@@ -102,8 +109,9 @@
         const gradientArray = opacity.slice(3);
 
         for (let i = 0; i < gradientArray.length; i += 2) {
+          const offset = ((xScale(gradientArray[i]) - lineStart) / lineLength) * 100;
           gradientStops.push({
-            offset: ((xScale(gradientArray[i]) - lineStart) / lineLength) * 100,
+            offset,
             stopColor: color,
             stopOpacity: gradientArray[i + 1]
           });
@@ -146,9 +154,15 @@
           // TODO look into base for interpolation
 
           const widthArray = width.slice(3);
+          topPoints.push([
+            xScale(layerMinZoom),
+            yScale(l.id) + (yScale.bandwidth() / 2)
+          ]);
           for (let i = 0; i < widthArray.length; i += 2) {
             const zoom = widthArray[i];
             const width = widthArray[i + 1];
+
+            if (zoom < layerMinZoom) continue;
 
             topPoints.push([xScale(zoom), yScale(l.id) - (width / 2) + yScale.bandwidth() / 2]);
             if (width > 0) {
