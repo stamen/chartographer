@@ -373,7 +373,7 @@
     </g>
 
     <g transform="translate(0, 0)" class="y-axis">
-      {#each layers as layer, i} 
+      {#each layers as layer}
         <g class="tick" opacity="1" transform="translate(0,
           {adjustedYScale(layer.id) + yScale.bandwidth() / 2})">
           <text y="9">
