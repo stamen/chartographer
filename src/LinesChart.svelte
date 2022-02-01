@@ -1,6 +1,7 @@
 <script>
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
+  import { backgroundSvgData } from './stores.js';
 
   export let style;
   export let minZoom = 0;
@@ -26,6 +27,16 @@
   let zoomLevels = [];
 
   let layers;
+
+  let backgroundRect;
+
+	backgroundSvgData.subscribe(value => {
+    const { gradientDefs, rect } = value;
+    if (gradientDefs) {
+      gradients.push(gradientDefs);
+    }
+    backgroundRect = rect;
+	});
 
   function getColor(layer, xScale, yScale) {
     const lineStart = xScale(layer.minzoom || minZoom);
@@ -260,6 +271,16 @@
       {/each}
     </defs>
     <g>
+      <rect
+        x={backgroundRect.x}
+        y={backgroundRect.y}
+        width={backgroundRect.width}
+        height={height - margin.top - margin.bottom}
+        fill={backgroundRect.fill}
+        stroke={backgroundRect.stroke}
+        strokeWidth={backgroundRect.strokeWidth}
+        rx="20"
+      />
       {#each layers as layer}
         <path
           d={layer.path}

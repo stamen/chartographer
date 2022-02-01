@@ -25,6 +25,9 @@
     e.stopPropagation();
     e.preventDefault();
 
+    // On dropping in a style, switch to the fill tab to refresh background layer state
+    handleTabChange({ detail: { tab: 'fill' } });
+  
     const { files } = e.dataTransfer;
     const text = await files[0].text();
     style = JSON.parse(text);
