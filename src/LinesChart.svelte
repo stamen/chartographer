@@ -268,16 +268,18 @@
       {/each}
     </defs>
     <g>
-      <rect
-        x={backgroundRect.x}
-        y={backgroundRect.y}
-        width={backgroundRect.width}
-        height={height - margin.top - margin.bottom}
-        fill={backgroundRect.fill}
-        stroke={backgroundRect.stroke}
-        strokeWidth={backgroundRect.strokeWidth}
-        rx="20"
-      />
+      {#if backgroundRect}
+        <rect
+          x={backgroundRect.x}
+          y={backgroundRect.y}
+          width={backgroundRect.width}
+          height={height - margin.top - margin.bottom}
+          fill={backgroundRect.fill}
+          stroke={backgroundRect.stroke}
+          strokeWidth={backgroundRect.strokeWidth}
+          rx="20"
+        />
+      {/if}
       {#each layers as layer}
         <path
           d={layer.path}

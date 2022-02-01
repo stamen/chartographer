@@ -155,8 +155,10 @@
     });
 
     const backgroundRect = rects.find(rect => rect.layer.type === 'background');
-    const backgroundGradient = gradients.find(g => g.id === backgroundRect.layer.id);
-    updateBackgroundRect(backgroundRect, backgroundGradient);
+    if (backgroundRect) {
+      const backgroundGradient = gradients.find(g => g.id === backgroundRect.layer.id);
+      updateBackgroundRect(backgroundRect, backgroundGradient);
+    }
   }
 
   onMount(() => {
