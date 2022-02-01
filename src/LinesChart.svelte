@@ -234,7 +234,9 @@
     layers = lineLayers.map(l => getDrawLayer(l, xScale, yScale));
 
     backgroundRect = backgroundSvgData.rect;
-    gradients.push(backgroundSvgData.gradientDefs);
+    if (backgroundSvgData.gradientDefs) {
+      gradients.push(backgroundSvgData.gradientDefs);
+    }
   }
 
   onMount(() => {
