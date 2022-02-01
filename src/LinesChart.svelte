@@ -20,6 +20,7 @@
 
   let xScale;
   let yScale;
+  let adjustedYScale;
 
   let scrollY = 0;
 
@@ -129,6 +130,71 @@
     return { color, strokeColor, strokeWidth };
   }
 
+  // Gathers outputs of expression for line width based on expression type
+  const gatherOutputs = exp => {
+    // Prevent unwanted mutations
+    const expression = JSON.parse(JSON.stringify(exp))
+    if (typeof expression === 'number') return [expression];
+    const outputs = [];
+    const expressionType = expression.hasOwnProperty('stops')
+      ? 'legacy'
+      : expression[0];
+
+    switch (expressionType) {
+      case 'case': {
+        let inputOutputs = expression.slice(1);
+        const fallback = inputOutputs.pop();
+        inputOutputs.forEach((val, i) => i % 2 !== 0 && outputs.push(val));
+        outputs.push(fallback);
+        break;
+      }
+      case 'match': {
+        let inputOutputs = expression.slice(2);
+        const fallback = inputOutputs.pop();
+        inputOutputs.forEach((val, i) => i % 2 !== 0 && outputs.push(val));
+        outputs.push(fallback);
+        break;
+      }
+      case 'interpolate': {
+        let inputOutputs = expression.slice(3);
+        inputOutputs.forEach((val, i) => i % 2 !== 0 && outputs.push(val));
+        break;
+      }
+      case 'step': {
+        let inputOutputs = expression.slice(2);
+        const fallback = inputOutputs.pop();
+        inputOutputs.forEach((val, i) => i % 2 === 0 && outputs.push(val));
+        outputs.push(fallback);
+        break;
+      }
+      case 'legacy': {
+        let inputOutputs = expression.stops;
+        inputOutputs.forEach(val => outputs.push(val[1]));
+        break;
+      }
+      default:
+        return expression;
+    }
+    if (outputs.some(item => Array.isArray(item))) {
+      return outputs.reduce((acc, item) => {
+        if (Array.isArray(item)) {
+          acc = acc.concat(gatherOutputs(item));
+        } else {
+          acc = acc.concat([item]);
+        }
+        return acc;
+      }, []);
+    }
+    return outputs;
+  };
+
+  // Returns the largest width a line reaches within an expression
+  function getFullLineWidth(layer) {
+    const lineWidth = layer?.paint?.['line-width'];
+    if (!lineWidth) return 1;
+    return Math.max(...gatherOutputs(lineWidth))
+  }
+
   function getPath(layer, xScale, yScale) {
     const width = layer.paint ? layer.paint['line-width'] : null;
     const layerMaxZoom = layer.maxzoom || maxZoom;
@@ -147,7 +213,7 @@
         const widthArray = width.slice(3);
         topPoints.push([
           xScale(layerMinZoom),
-          yScale(layer.id) + (yScale.bandwidth() / 2)
+          adjustedYScale(layer.id) + (yScale.bandwidth() / 2)
         ]);
         for (let i = 0; i < widthArray.length; i += 2) {
           const zoom = widthArray[i];
@@ -155,9 +221,9 @@
 
           if (zoom < layerMinZoom) continue;
 
-          topPoints.push([xScale(zoom), yScale(layer.id) - (width / 2) + yScale.bandwidth() / 2]);
+          topPoints.push([xScale(zoom), adjustedYScale(layer.id) - (width / 2) + yScale.bandwidth() / 2]);
           if (width > 0) {
-            bottomPoints.push([xScale(zoom), yScale(layer.id) + (width / 2) + yScale.bandwidth() / 2]);
+            bottomPoints.push([xScale(zoom), adjustedYScale(layer.id) + (width / 2) + yScale.bandwidth() / 2]);
           }
         }
 
@@ -174,9 +240,9 @@
       width.stops.forEach(stop => {
         const [zoom, width] = stop;
 
-        topPoints.push([xScale(zoom), yScale(layer.id) - (width / 2) + yScale.bandwidth() / 2]);
+        topPoints.push([xScale(zoom), adjustedYScale(layer.id) - (width / 2) + yScale.bandwidth() / 2]);
         if (width > 0) {
-          bottomPoints.push([xScale(zoom), yScale(layer.id) + (width / 2) + yScale.bandwidth() / 2]);
+          bottomPoints.push([xScale(zoom), adjustedYScale(layer.id) + (width / 2) + yScale.bandwidth() / 2]);
         }
       });
 
@@ -184,17 +250,17 @@
     }
     else if (!width) {
       let layerWidth = 1;
-      topPoints.push([xScale(layerMinZoom), yScale(layer.id) - (layerWidth / 2) + yScale.bandwidth() / 2]);
-      topPoints.push([xScale(layerMaxZoom), yScale(layer.id) - (layerWidth / 2) + yScale.bandwidth() / 2]);
-      bottomPoints.push([xScale(layerMinZoom), yScale(layer.id) + (layerWidth / 2) + yScale.bandwidth() / 2]);
-      bottomPoints.push([xScale(layerMaxZoom), yScale(layer.id) + (layerWidth / 2) + yScale.bandwidth() / 2]);
+      topPoints.push([xScale(layerMinZoom), adjustedYScale(layer.id) - (layerWidth / 2) + yScale.bandwidth() / 2]);
+      topPoints.push([xScale(layerMaxZoom), adjustedYScale(layer.id) - (layerWidth / 2) + yScale.bandwidth() / 2]);
+      bottomPoints.push([xScale(layerMinZoom), adjustedYScale(layer.id) + (layerWidth / 2) + yScale.bandwidth() / 2]);
+      bottomPoints.push([xScale(layerMaxZoom), adjustedYScale(layer.id) + (layerWidth / 2) + yScale.bandwidth() / 2]);
     }
 
     if (topPoints.length) {
       if (layerMaxZoom > lastZoom) {
-        topPoints.push([xScale(layerMaxZoom), yScale(layer.id) - (lastWidth / 2) + yScale.bandwidth() / 2]);
+        topPoints.push([xScale(layerMaxZoom), adjustedYScale(layer.id) - (lastWidth / 2) + yScale.bandwidth() / 2]);
         if (lastWidth > 0) {
-          bottomPoints.push([xScale(layerMaxZoom), yScale(layer.id) + (lastWidth / 2) + yScale.bandwidth() / 2]);
+          bottomPoints.push([xScale(layerMaxZoom), adjustedYScale(layer.id) + (lastWidth / 2) + yScale.bandwidth() / 2]);
         }
       }
 
@@ -226,6 +292,30 @@
     yScale = d3.scaleBand(lineLayers.map(({ id }) => id), [margin.top, height - margin.bottom])
       .padding(0.25);
 
+    // Adjust the yScale to account for layer width since D3 scaleBand spaces evenly
+    const yScaleObj = lineLayers.reduce((acc, l) => {
+      acc[l.id] = yScale(l.id);
+      return acc;
+    }, {});
+
+    let yOffset = 0;
+
+    for (let i = 0; i < lineLayers.length; i++) {
+      const l = lineLayers[i];
+      let placement = yScaleObj[l.id];
+      const prevLineWidth = lineLayers[i - 1] ? getFullLineWidth(lineLayers[i - 1]) : 1;
+      const currentLineWidth = getFullLineWidth(l);
+      yOffset += prevLineWidth / 2 + currentLineWidth / 2;
+      const nextPlacement = placement + yOffset;
+      yScaleObj[l.id] = nextPlacement;
+    }
+
+    // Adjust the height to account for the increased offsets
+    height = height + yOffset;
+
+    // Adjusted yScale function to use throughout
+    adjustedYScale = (layerId) => yScaleObj[layerId];    
+
     zoomLevels = d3.range(minZoom, maxZoom + 1, 1);
 
     layers = lineLayers.map(l => getDrawLayer(l, xScale, yScale));
@@ -239,9 +329,10 @@
     tooltip = {
       text: JSON.stringify(layer.paint, null, 2),
       left: xScale(maxZoom) + 10,
-      top: yScale(layer.id) + yScale.bandwidth()
+      top: adjustedYScale(layer.id) + yScale.bandwidth()
     };
   }
+
 </script>
 
 <div class="fills-chart">
@@ -282,9 +373,9 @@
     </g>
 
     <g transform="translate(0, 0)" class="y-axis">
-      {#each layers as layer} 
+      {#each layers as layer, i} 
         <g class="tick" opacity="1" transform="translate(0,
-          {yScale(layer.id) + yScale.bandwidth() / 2})">
+          {adjustedYScale(layer.id) + yScale.bandwidth() / 2})">
           <text y="9">
             {layer.id}
           </text>
