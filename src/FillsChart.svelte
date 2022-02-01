@@ -188,7 +188,7 @@
           x={rect.x}
           y={rect.y}
           width={rect.width}
-          height={rect.height}
+          height={rect.layer.type === 'background' ? height - margin.top - margin.bottom : rect.height}
           fill={rect.fill}
           stroke={rect.stroke}
           strokeWidth={rect.strokeWidth}
