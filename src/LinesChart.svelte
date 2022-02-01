@@ -286,7 +286,7 @@
 
   $: if (style && style.layers) {
     const lineLayers = style.layers.filter(l => l.type === 'line');
-    height = style.layers.length * 65;
+    height = lineLayers.length * 65;
 
     xScale = d3.scaleLinear([minZoom, maxZoom], [margin.left, width - margin.right]);
     yScale = d3.scaleBand(lineLayers.map(({ id }) => id), [margin.top, height - margin.bottom])
