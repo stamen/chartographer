@@ -4,6 +4,7 @@
 
   export let selectedTab = 'fill';
   export let style;
+  export let backgroundSvgData = {};
 
   function handleStyleLoad(e) {
     style = e.detail.style;
@@ -32,6 +33,10 @@
     const text = await files[0].text();
     style = JSON.parse(text);
   }
+
+  function updateBackgroundRect(backgroundRect, backgroundGradient) {
+    backgroundSvgData = { gradientDefs: backgroundGradient, rect: backgroundRect };
+  }
 </script>
 
 <main
@@ -41,7 +46,7 @@
 >
   {#if style}
     <Tabs on:tabchange={handleTabChange} />
-    <TabsContent {selectedTab} {style} />
+    <TabsContent {selectedTab} {style} {updateBackgroundRect} {backgroundSvgData} />
   {:else}
     <div class="drop">
       <div>Drop a style here</div>

@@ -1,11 +1,11 @@
 <script>
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
-  import { backgroundSvgData } from './stores.js';
 
   export let style;
   export let minZoom = 0;
   export let maxZoom = 24;
+  export let backgroundSvgData;
 
   const width = 1000;
   let height;
@@ -29,14 +29,6 @@
   let layers;
 
   let backgroundRect;
-
-	backgroundSvgData.subscribe(value => {
-    const { gradientDefs, rect } = value;
-    if (gradientDefs) {
-      gradients.push(gradientDefs);
-    }
-    backgroundRect = rect;
-	});
 
   function getColor(layer, xScale, yScale) {
     const lineStart = xScale(layer.minzoom || minZoom);
@@ -240,6 +232,9 @@
     zoomLevels = d3.range(minZoom, maxZoom + 1, 1);
 
     layers = lineLayers.map(l => getDrawLayer(l, xScale, yScale));
+
+    backgroundRect = backgroundSvgData.rect;
+    gradients.push(backgroundSvgData.gradientDefs);
   }
 
   onMount(() => {

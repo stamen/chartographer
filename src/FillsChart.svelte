@@ -1,11 +1,11 @@
 <script>
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
-  import { backgroundSvgData } from './stores.js';
 
   export let style;
   export let minZoom = 0;
   export let maxZoom = 24;
+  export let updateBackgroundRect;
 
   const width = 1000;
   let height;
@@ -156,7 +156,7 @@
 
     const backgroundRect = rects.find(rect => rect.layer.type === 'background');
     const backgroundGradient = gradients.find(g => g.id === backgroundRect.layer.id);
-    backgroundSvgData.set({gradientDefs: backgroundGradient, rect: backgroundRect});
+    updateBackgroundRect(backgroundRect, backgroundGradient);
   }
 
   onMount(() => {
