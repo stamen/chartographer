@@ -28,7 +28,7 @@
 
   let layers;
 
-  function getColor(layer, xScale, yScale) {
+  function getColor(layer) {
     const lineStart = xScale(layer.minzoom || minZoom);
     const lineLength = xScale(layer.maxzoom || maxZoom) - xScale(layer.minzoom ||
       minZoom);
@@ -195,7 +195,7 @@
     return Math.max(...gatherOutputs(lineWidth))
   }
 
-  function getPath(layer, xScale, yScale) {
+  function getPath(layer) {
     const width = layer.paint ? layer.paint['line-width'] : null;
     const layerMaxZoom = layer.maxzoom || maxZoom;
     const layerMinZoom = layer.minzoom !== undefined ? layer.minzoom : minZoom;
@@ -270,10 +270,10 @@
     return path;
   }
 
-  function getDrawLayer(layer, xScale, yScale) {
+  function getDrawLayer(layer) {
 
-    const { color, strokeColor, strokeWidth } = getColor(layer, xScale, yScale);
-    const path = getPath(layer, xScale, yScale);
+    const { color, strokeColor, strokeWidth } = getColor(layer);
+    const path = getPath(layer);
 
     return {
       ...layer,
@@ -318,7 +318,7 @@
 
     zoomLevels = d3.range(minZoom, maxZoom + 1, 1);
 
-    layers = lineLayers.map(l => getDrawLayer(l, xScale, yScale));
+    layers = lineLayers.map(l => getDrawLayer(l));
   }
 
   onMount(() => {
@@ -373,7 +373,7 @@
     </g>
 
     <g transform="translate(0, 0)" class="y-axis">
-      {#each layers as layer}
+      {#each layers as layer} 
         <g class="tick" opacity="1" transform="translate(0,
           {adjustedYScale(layer.id) + yScale.bandwidth() / 2})">
           <text y="9">
