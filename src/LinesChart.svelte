@@ -5,6 +5,7 @@
   export let style;
   export let minZoom = 0;
   export let maxZoom = 24;
+  export let backgroundSvgData;
 
   const width = 1000;
   let height;
@@ -27,6 +28,8 @@
   let zoomLevels = [];
 
   let layers;
+
+  let backgroundRect;
 
   function getColor(layer) {
     const lineStart = xScale(layer.minzoom || minZoom);
@@ -319,6 +322,12 @@
     zoomLevels = d3.range(minZoom, maxZoom + 1, 1);
 
     layers = lineLayers.map(l => getDrawLayer(l));
+
+
+    backgroundRect = backgroundSvgData.rect;
+    if (backgroundSvgData.gradientDefs) {
+      gradients.push(backgroundSvgData.gradientDefs);
+    }
   }
 
   onMount(() => {
@@ -351,6 +360,18 @@
       {/each}
     </defs>
     <g>
+      {#if backgroundRect}
+        <rect
+          x={backgroundRect.x}
+          y={backgroundRect.y}
+          width={backgroundRect.width}
+          height={height - margin.top - margin.bottom}
+          fill={backgroundRect.fill}
+          stroke={backgroundRect.stroke}
+          strokeWidth={backgroundRect.strokeWidth}
+          rx="20"
+        />
+      {/if}
       {#each layers as layer}
         <path
           d={layer.path}

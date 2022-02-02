@@ -5,6 +5,7 @@
   export let style;
   export let minZoom = 0;
   export let maxZoom = 24;
+  export let updateBackgroundRect;
 
   const width = 1000;
   let height;
@@ -152,6 +153,12 @@
         layer: d,
       };
     });
+
+    const backgroundRect = rects.find(rect => rect.layer.type === 'background');
+    if (backgroundRect) {
+      const backgroundGradient = gradients.find(g => g.id === backgroundRect.layer.id);
+      updateBackgroundRect(backgroundRect, backgroundGradient);
+    }
   }
 
   onMount(() => {
@@ -188,7 +195,7 @@
           x={rect.x}
           y={rect.y}
           width={rect.width}
-          height={rect.height}
+          height={rect.layer.type === 'background' ? height - margin.top - margin.bottom : rect.height}
           fill={rect.fill}
           stroke={rect.stroke}
           strokeWidth={rect.strokeWidth}
