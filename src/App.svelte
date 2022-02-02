@@ -1,10 +1,42 @@
 <script>
+  import * as d3 from 'd3';
+  import { onMount } from 'svelte';
+  import { readQuery, writeQuery } from './query';
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
 
-  export let selectedTab = 'fill';
+  export let selectedTab;
   export let style;
   export let backgroundSvgData = {};
+  export let loadDefaultStyle = false;
+
+  onMount(() => {
+    const query = readQuery();
+    if (query.selectedTab) {
+      selectedTab = query.selectedTab;
+    }
+    else {
+      selectedTab = 'fill';
+    }
+
+    if (loadDefaultStyle) {
+      loadStyleUrl('./style.json');
+    }
+  });
+
+  function getState() {
+    let state = {};
+    if (selectedTab) state.selectedTab = selectedTab;
+    return state;
+  }
+
+  function updateQuery() {
+    writeQuery(getState());
+  }
+
+  async function loadStyleUrl(url) {
+    style = await d3.json(url);
+  }
 
   function handleStyleLoad(e) {
     style = e.detail.style;
@@ -12,6 +44,7 @@
 
   function handleTabChange(e) {
     selectedTab = e.detail.tab;
+    updateQuery();
   }
 
   function handleDragOver(e) {
