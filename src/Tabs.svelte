@@ -5,7 +5,6 @@
 <div class='tabs'>
   <Tab label="fill" on:tabchange />
   <Tab label="lines" on:tabchange />
-  <Tab label="typography" on:tabchange />
 </div>
 
 <style>
