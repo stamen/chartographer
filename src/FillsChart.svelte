@@ -1,6 +1,7 @@
 <script>
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
+  import Tooltip from './Tooltip.svelte';
 
   export let style;
   export let minZoom = 0;
@@ -19,6 +20,8 @@
   let rects = [];
   let gradients = [];
   $: tooltip = {};
+
+  const handleTooltipClose = () => tooltip = {};
 
   let xScale;
   let yScale;
@@ -227,24 +230,18 @@
     </g>
   </svg>
 
-  <div class="tooltip" style="display: {Object.keys(tooltip).length > 0 ?
-    'block': 'visible'}; left: {tooltip.left ? tooltip.left : -1000}px; top: {tooltip.top}px;">
-    <pre>
-      <code>
-        {tooltip.text || ''}
-      </code>
-    </pre>
-  </div>
+  {#if Object.keys(tooltip)}
+    <Tooltip
+      left={tooltip.left}
+      top={tooltip.top}
+      on:close={handleTooltipClose}
+    >
+      {tooltip.text || ''}
+    </Tooltip>
+  {/if}
 </div>
 
 <style>
-  .tooltip {
-    background: white;
-    border: 1px solid black;
-    padding: 1em;
-    position: absolute;
-  }
-
   .x-axis text {
     font-size: 0.9em;
     text-anchor: middle;
