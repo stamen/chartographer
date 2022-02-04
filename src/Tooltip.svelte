@@ -10,7 +10,7 @@
   }
 </script>
 
-<div class="tooltip" style="left: {left ? left : -1000}px; top: {top}px;">
+<div class="tooltip" style="left: {left}px; top: {top}px;">
   <button class="close-button" on:click={handleClose}>&times;</button>
   <pre>
     <code>

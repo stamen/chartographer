@@ -235,7 +235,7 @@
     </g>
   </svg>
 
-  {#if Object.keys(tooltip)}
+  {#if Object.keys(tooltip).length > 0}
     <Tooltip
       left={tooltip.left}
       top={tooltip.top}
