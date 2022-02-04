@@ -22,6 +22,11 @@
 
   const handleTooltipClose = () => tooltip = {};
 
+  $: {
+    style; // Make this block react to the style prop changing
+    handleTooltipClose();
+  }
+
   let xScale;
   let yScale;
   let adjustedYScale;
