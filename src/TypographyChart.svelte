@@ -1,6 +1,7 @@
 <script>
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
+  import mapboxGl from 'mapbox-gl';
   import { getValue as getNumericValue } from './interpolation/numeric';
   import { getValue as getColorValue } from './interpolation/color';
 
@@ -8,14 +9,10 @@
   export let minZoom = 0;
   export let maxZoom = 24;
 
-  const width = 1400;
+  let map;
+
+  const width = 2200;
   let height;
-  const margin = {
-    bottom: 25,
-    left: 50,
-    right: 50,
-    top: 50
-  };
   let xScale;
   let yScale;
   let tooltip = {};
@@ -31,24 +28,23 @@
 
   function getSize(layer, zoom) {
     if (!layer.layout) return 10;
-    if (layer.id === 'public_complexes') {
-      console.log(layer);
-    }
     let size = layer.layout['text-size'];
     return getNumericValue(size, zoom);
   }
 
-  function getFont(layer, zoom) {
-    // TODO and also peek into the file and load the font?
+  function getIconSize(layer, zoom) {
+    if (!layer.layout) return 10;
+    let size = layer.layout['icon-size'];
+    return getNumericValue(size, zoom);
   }
 
-  function getStroke(layer, zoom) {
+  function getHaloColor(layer, zoom) {
     if (!layer.paint) return '';
     let color = layer.paint['text-halo-color'];
     return getColorValue(color, zoom, '');
   }
 
-  function getStrokeWidth(layer, zoom) {
+  function getHaloWidth(layer, zoom) {
     if (!layer.paint) return 0;
     let width = layer.paint['text-halo-width'];
     return getNumericValue(width, zoom);
@@ -77,54 +73,144 @@
     };
   }
 
+  function drawAxis() {
+    const features = zooms.map(zoom => ({
+      type: 'Feature',
+      properties: { label: `${zoom}` },
+      geometry: {
+        type: 'Point',
+        coordinates: [
+          xScale(zoom),
+          yScale('x-axis')
+        ]
+      }
+    }));
+
+    map.addSource('x-axis', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features }
+    });
+
+    map.addLayer({
+      id: 'x-axis',
+      source: 'x-axis',
+      layout: {
+        "text-font": layers[0].layout['text-font'],
+        'icon-allow-overlap': true,
+        'symbol-placement': 'point',
+        'text-allow-overlap': true,
+        'text-field': '{label}',
+        'text-size': 10,
+      },
+      paint: {
+        'text-color': 'black'
+      },
+      type: 'symbol'
+    });
+  }
+
+  function drawLabels() {
+    layers.forEach(layer => {
+      zooms.forEach(zoom => {
+        const id = `${layer.id}-${zoom}`;
+        if (!isValidZoom(layer, zoom)) return;
+
+        map.addSource(id, {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: [
+              {
+                type: 'Feature',
+                properties: {
+                  label: layer.id.indexOf('shield') >= 0 ? 80 : layer.id
+                },
+                geometry: {
+                  type: 'Point',
+                  coordinates: [
+                    xScale(zoom),
+                    yScale(layer.id)
+                  ]
+                }
+              }
+            ]
+          }
+        });
+
+        // TODO other properties that vary by zoom
+        map.addLayer({
+          id: id,
+          source: id,
+          paint: {
+            ...layer.paint,
+            'text-color': getColor(layer, zoom),
+            'text-halo-width': getHaloWidth(layer, zoom),
+            // 'text-halo-color': getHaloColor(layer, zoom),
+          },
+          layout: {
+            ...layer.layout,
+            'icon-allow-overlap': true,
+            'icon-size': getIconSize(layer, zoom),
+            'symbol-placement': 'point',
+            'text-allow-overlap': true,
+            'text-size': getSize(layer, zoom),
+            'text-field': '{label}'
+          },
+          type: layer.type
+        });
+      });
+    });
+  }
+
+  function draw() {
+    const bounds = map.getBounds();
+    const boundsWidth = Math.abs(bounds.getEast() - bounds.getWest());
+    xScale = d3.scaleLinear(
+      [minZoom, maxZoom],
+      [bounds.getWest() + boundsWidth * 0.08, bounds.getEast() - boundsWidth * 0.08]
+    );
+    yScale = d3.scaleBand([
+      'x-axis',
+      ...layers.map(({ id }) => id)
+    ], [bounds.getNorth(), bounds.getSouth()])
+
+    drawAxis();
+    drawLabels();
+  }
+
   $: {
     layers = style.layers.filter(layer => layer.type === 'symbol');
-    height = layers.length * 25;
-    xScale = d3.scaleLinear([minZoom, maxZoom], [margin.left, width - margin.right]);
-    yScale = d3.scaleBand(layers.map(({ id }) => id), [margin.top, height - margin.bottom])
+    height = layers.length * 45;
+    if (map && map.isStyleLoaded()) draw();
   }
 
   onMount(() => {
+    console.log(style);
+    map = new mapboxGl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        glyphs: style.glyphs,
+        sprite: style.sprite,
+        sources: {},
+        layers: style.layers.filter(l => l.type === 'background'),
+      },
+      boxZoom: false,
+      doubleClickZoom: false,
+      scrollZoom: false,
+      zoom: 16
+    });
+
+    map.on('load', draw);
+
     document.addEventListener('scroll', () => scrollY = window.scrollY);
   });
 </script>
 
 <div class="typography-chart">
-  <svg {width} {height}>
-    <g>
-      {#each layers as layer}
-        <g>
-          {#each zooms as zoom}
-            {#if isValidZoom(layer, zoom)}
-              <text
-                class="label-text"
-                x={xScale(zoom)}
-                y={yScale(layer.id)}
-                fill={getColor(layer, zoom)}
-                stroke={getStroke(layer, zoom)}
-                stroke-width={`${getStrokeWidth(layer, zoom)}px`}
-                font-size={`${getSize(layer, zoom)}px`}
-                on:click={() => handleClick(layer)}
-              >
-                {layer.id}
-              </text>
-            {/if}
-          {/each}
-        </g>
-      {/each}
-    </g>
-
-    <g transform="translate(0, {margin.top / 2 + scrollY})" class="x-axis">
-      {#each zooms as zoom} 
-        <g class="tick" opacity="1" transform="translate({xScale(zoom)}, 0)">
-          <text y="9">
-            {zoom}
-          </text>
-        </g>
-      {/each}
-    </g>
-  </svg>
-
+  <div style="width: {width}px; height: {height}px;" id="map"></div>
+  <!--
+  TODO
   <div class="tooltip" style="display: {Object.keys(tooltip).length > 0 ?
     'block': 'visible'}; left: {tooltip.left ? tooltip.left : -1000}px; top: {tooltip.top}px;">
     <pre>
@@ -133,6 +219,7 @@
       </code>
     </pre>
   </div>
+  -->
 </div>
 
 <style>
