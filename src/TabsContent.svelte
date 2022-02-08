@@ -5,11 +5,13 @@
 
   export let selectedTab;
   export let style;
+  export let updateBackgroundRect;
+  export let backgroundSvgData;
 </script>
 
 <div class='tabs-content'>
   {#if selectedTab === 'fill'}
-    <FillsChart {style} />
+    <FillsChart {style} {updateBackgroundRect} />
   {:else}
     {#if selectedTab === 'lines'}
       <LinesChart {style} />

@@ -7,6 +7,7 @@
 
   export let selectedTab;
   export let style;
+  export let backgroundSvgData = {};
   export let loadDefaultStyle = false;
 
   onMount(() => {
@@ -56,11 +57,16 @@
 
   async function handleDrop(e) {
     e.stopPropagation();
-    e.preventDefault();
-
+    e.preventDefault();  
     const { files } = e.dataTransfer;
     const text = await files[0].text();
     style = JSON.parse(text);
+     // On dropping in a style, switch to the fill tab to refresh background layer state
+     handleTabChange({ detail: { tab: 'fill' } });
+  }
+
+  function updateBackgroundRect(backgroundRect, backgroundGradient) {
+    backgroundSvgData = { gradientDefs: backgroundGradient, rect: backgroundRect };
   }
 </script>
 
@@ -71,7 +77,7 @@
 >
   {#if style}
     <Tabs on:tabchange={handleTabChange} />
-    <TabsContent {selectedTab} {style} />
+    <TabsContent {selectedTab} {style} {updateBackgroundRect} {backgroundSvgData} />
   {:else}
     <div class="drop">
       <div>Drop a style here</div>

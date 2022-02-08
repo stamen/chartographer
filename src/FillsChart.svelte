@@ -1,10 +1,12 @@
 <script>
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
+  import Tooltip from './Tooltip.svelte';
 
   export let style;
   export let minZoom = 0;
   export let maxZoom = 24;
+  export let updateBackgroundRect;
 
   const width = 1000;
   let height;
@@ -18,6 +20,13 @@
   let rects = [];
   let gradients = [];
   $: tooltip = {};
+
+  const handleTooltipClose = () => tooltip = {};
+
+  $: {
+    style; // Make this block react to the style prop changing
+    handleTooltipClose();
+  }
 
   let xScale;
   let yScale;
@@ -152,6 +161,12 @@
         layer: d,
       };
     });
+
+    const backgroundRect = rects.find(rect => rect.layer.type === 'background');
+    if (backgroundRect) {
+      const backgroundGradient = gradients.find(g => g.id === backgroundRect.layer.id);
+      updateBackgroundRect(backgroundRect, backgroundGradient);
+    }
   }
 
   onMount(() => {
@@ -188,7 +203,7 @@
           x={rect.x}
           y={rect.y}
           width={rect.width}
-          height={rect.height}
+          height={rect.layer.type === 'background' ? height - margin.top - margin.bottom : rect.height}
           fill={rect.fill}
           stroke={rect.stroke}
           strokeWidth={rect.strokeWidth}
@@ -220,24 +235,18 @@
     </g>
   </svg>
 
-  <div class="tooltip" style="display: {Object.keys(tooltip).length > 0 ?
-    'block': 'visible'}; left: {tooltip.left ? tooltip.left : -1000}px; top: {tooltip.top}px;">
-    <pre>
-      <code>
-        {tooltip.text || ''}
-      </code>
-    </pre>
-  </div>
+  {#if Object.keys(tooltip).length > 0}
+    <Tooltip
+      left={tooltip.left}
+      top={tooltip.top}
+      on:close={handleTooltipClose}
+    >
+      {tooltip.text || ''}
+    </Tooltip>
+  {/if}
 </div>
 
 <style>
-  .tooltip {
-    background: white;
-    border: 1px solid black;
-    padding: 1em;
-    position: absolute;
-  }
-
   .x-axis text {
     font-size: 0.9em;
     text-anchor: middle;
