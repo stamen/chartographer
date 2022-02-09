@@ -26,6 +26,7 @@ export function getFunction(expression) {
 }
 
 export function getValue(expression, zoom, defaultValue = 0) {
+  if (expression == undefined) return defaultValue;
   if (typeof expression === 'number') return expression;
   if (Array.isArray(expression)) {
     return getFunction(expression)(zoom);

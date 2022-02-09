@@ -4,6 +4,7 @@
   import mapboxGl from 'mapbox-gl';
   import { getValue as getNumericValue } from './interpolation/numeric';
   import { getValue as getColorValue } from './interpolation/color';
+  import Tooltip from './Tooltip.svelte';
 
   export let style;
   export let minZoom = 0;
@@ -11,7 +12,7 @@
 
   let map;
 
-  const width = 2200;
+  const width = 2500;
   let height;
   let xScale;
   let yScale;
@@ -20,40 +21,18 @@
 
   let layers;
   let zooms = d3.range(minZoom, maxZoom + 1, 2);
+  const handleTooltipClose = () => tooltip = {};
 
-  // TODO layout.text-line-height
-  // TODO layout.max-width
-  // TODO layout.letter-spacing
-  // TODO paint.text-halo-blur
-
-  function getSize(layer, zoom) {
-    if (!layer.layout) return 10;
-    let size = layer.layout['text-size'];
-    return getNumericValue(size, zoom);
+  function getNumericProperty(layer, zoom, propertyType, property) {
+    if (!layer[propertyType]) return null;
+    let value = layer[propertyType][property];
+    return getNumericValue(value, zoom, null);
   }
 
-  function getIconSize(layer, zoom) {
-    if (!layer.layout) return 10;
-    let size = layer.layout['icon-size'];
-    return getNumericValue(size, zoom);
-  }
-
-  function getHaloColor(layer, zoom) {
-    if (!layer.paint) return '';
-    let color = layer.paint['text-halo-color'];
-    return getColorValue(color, zoom, '');
-  }
-
-  function getHaloWidth(layer, zoom) {
-    if (!layer.paint) return 0;
-    let width = layer.paint['text-halo-width'];
-    return getNumericValue(width, zoom);
-  }
-
-  function getColor(layer, zoom) {
-    if (!layer.paint) return 'red';
-    let color = layer.paint['text-color'];
-    return getColorValue(color, zoom, 'red');
+  function getColorProperty(layer, zoom, propertyType, property) {
+    if (!layer[propertyType]) return null;
+    let value = layer[propertyType][property];
+    return getColorValue(value, zoom, null);
   }
 
   function isValidZoom(layer, zoom) {
@@ -62,14 +41,26 @@
     return true;
   }
 
-  function handleClick(layer) {
+  function handleClick(e) {
+    const feature = map.queryRenderedFeatures(e.point)[0];
+    if (!feature) {
+      handleTooltipClose();
+      return;
+    }
+    const layerId = feature.layer.id.slice(0, feature.layer.id.lastIndexOf('-'));
+    const layer = layers.filter(l => l.id === layerId)[0];
+    if (!layer) {
+      handleTooltipClose();
+      return;
+    }
+
     tooltip = {
       text: JSON.stringify({
         layout: layer.layout,
         paint: layer.paint,
       }, null, 2),
-      left: xScale(maxZoom) + 10,
-      top: yScale(layer.id) + yScale.bandwidth()
+      left: e.point.x,
+      top: e.point.y
     };
   }
 
@@ -137,25 +128,40 @@
           }
         });
 
-        // TODO other properties that vary by zoom
+        const paintOverrides = {
+          'text-color': getColorProperty(layer, zoom, 'paint', 'text-color'),
+          'text-halo-blur': getNumericProperty(layer, zoom, 'paint', 'text-halo-blur'),
+          'text-halo-color': getColorProperty(layer, zoom, 'paint', 'text-halo-color'),
+          'text-halo-width': getNumericProperty(layer, zoom, 'paint', 'text-halo-width'),
+        };
+
+        const paint = {
+          ...layer.paint,
+          ...Object.fromEntries(Object.entries(paintOverrides).filter(([k, v]) => v !== null)),
+        };
+
+        const layoutOverrides = {
+          'icon-allow-overlap': true,
+          'icon-size': getNumericProperty(layer, zoom, 'layout', 'icon-size'),
+          'letter-spacing': getNumericProperty(layer, zoom, 'layout', 'letter-spacing'),
+          'max-width': getNumericProperty(layer, zoom, 'layout', 'max-width'),
+          'symbol-placement': 'point',
+          'text-allow-overlap': true,
+          'text-field': '{label}',
+          'text-line-height': getNumericProperty(layer, zoom, 'layout', 'text-line-height'),
+          'text-size': getNumericProperty(layer, zoom, 'layout', 'text-size'),
+        };
+
+        const layout = {
+          ...layer.layout,
+          ...Object.fromEntries(Object.entries(layoutOverrides).filter(([k, v]) => v !== null)),
+        };
+
         map.addLayer({
           id: id,
           source: id,
-          paint: {
-            ...layer.paint,
-            'text-color': getColor(layer, zoom),
-            'text-halo-width': getHaloWidth(layer, zoom),
-            // 'text-halo-color': getHaloColor(layer, zoom),
-          },
-          layout: {
-            ...layer.layout,
-            'icon-allow-overlap': true,
-            'icon-size': getIconSize(layer, zoom),
-            'symbol-placement': 'point',
-            'text-allow-overlap': true,
-            'text-size': getSize(layer, zoom),
-            'text-field': '{label}'
-          },
+          paint,
+          layout,
           type: layer.type
         });
       });
@@ -185,7 +191,6 @@
   }
 
   onMount(() => {
-    console.log(style);
     map = new mapboxGl.Map({
       container: 'map',
       style: {
@@ -197,11 +202,13 @@
       },
       boxZoom: false,
       doubleClickZoom: false,
+      dragPan: false,
       scrollZoom: false,
       zoom: 16
     });
 
     map.on('load', draw);
+    map.on('click', handleClick);
 
     document.addEventListener('scroll', () => scrollY = window.scrollY);
   });
@@ -209,17 +216,16 @@
 
 <div class="typography-chart">
   <div style="width: {width}px; height: {height}px;" id="map"></div>
-  <!--
-  TODO
-  <div class="tooltip" style="display: {Object.keys(tooltip).length > 0 ?
-    'block': 'visible'}; left: {tooltip.left ? tooltip.left : -1000}px; top: {tooltip.top}px;">
-    <pre>
-      <code>
-        {tooltip.text || ''}
-      </code>
-    </pre>
-  </div>
-  -->
+
+  {#if Object.keys(tooltip).length > 0}
+    <Tooltip
+      left={tooltip.left}
+      top={tooltip.top}
+      on:close={handleTooltipClose}
+    >
+      {tooltip.text || ''}
+    </Tooltip>
+  {/if}
 </div>
 
 <style>
@@ -230,12 +236,5 @@
   .x-axis .tick {
     text-anchor: middle;
     font-size: 0.9em;
-  }
-
-  .tooltip {
-    background: white;
-    border: 1px solid black;
-    padding: 1em;
-    position: absolute;
   }
 </style>

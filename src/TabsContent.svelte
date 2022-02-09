@@ -14,7 +14,7 @@
     <FillsChart {style} {updateBackgroundRect} />
   {:else}
     {#if selectedTab === 'lines'}
-      <LinesChart {style} />
+      <LinesChart {style} {backgroundSvgData} />
     {:else}
       {#if selectedTab === 'typography'}
         <TypographyChart {style} />

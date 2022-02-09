@@ -25,7 +25,8 @@ export function getFunction(expression) {
   return () => {};
 }
 
-export function getValue(expression, zoom, defaultValue = 'red') {
+export function getValue(expression, zoom, defaultValue = null) {
+  if (expression == undefined) return defaultValue;
   if (typeof expression === 'string') return expression;
   if (Array.isArray(expression)) {
     const f = getFunction(expression);
