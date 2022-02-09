@@ -2,8 +2,7 @@
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
   import mapboxGl from 'mapbox-gl';
-  import { getValue as getNumericValue } from './interpolation/numeric';
-  import { getValue as getColorValue } from './interpolation/color';
+  import { getValue as getInterpolatedValue } from './interpolation';
   import Tooltip from './Tooltip.svelte';
 
   export let style;
@@ -17,7 +16,6 @@
   let xScale;
   let yScale;
   let tooltip = {};
-  let scrollY = 0;
 
   let layers;
   let zooms = d3.range(minZoom, maxZoom + 1, 2);
@@ -26,13 +24,14 @@
   function getNumericProperty(layer, zoom, propertyType, property) {
     if (!layer[propertyType]) return null;
     let value = layer[propertyType][property];
-    return getNumericValue(value, zoom, null);
+    return getInterpolatedValue(value, zoom, null);
   }
 
   function getColorProperty(layer, zoom, propertyType, property) {
     if (!layer[propertyType]) return null;
     let value = layer[propertyType][property];
-    return getColorValue(value, zoom, null);
+    console.log(value, zoom);
+    return getInterpolatedValue(value, zoom, null);
   }
 
   function isValidZoom(layer, zoom) {
@@ -135,6 +134,7 @@
           'text-halo-width': getNumericProperty(layer, zoom, 'paint', 'text-halo-width'),
         };
 
+        // Selectively extend paint properties, avoid adding null values
         const paint = {
           ...layer.paint,
           ...Object.fromEntries(Object.entries(paintOverrides).filter(([k, v]) => v !== null)),
@@ -152,6 +152,7 @@
           'text-size': getNumericProperty(layer, zoom, 'layout', 'text-size'),
         };
 
+        // Selectively extend layout properties, avoid adding null values
         const layout = {
           ...layer.layout,
           ...Object.fromEntries(Object.entries(layoutOverrides).filter(([k, v]) => v !== null)),
@@ -184,13 +185,7 @@
     drawLabels();
   }
 
-  $: {
-    layers = style.layers.filter(layer => layer.type === 'symbol');
-    height = layers.length * 45;
-    if (map && map.isStyleLoaded()) draw();
-  }
-
-  onMount(() => {
+  function createMap(style) {
     map = new mapboxGl.Map({
       container: 'map',
       style: {
@@ -209,8 +204,16 @@
 
     map.on('load', draw);
     map.on('click', handleClick);
+  }
 
-    document.addEventListener('scroll', () => scrollY = window.scrollY);
+  $: {
+    layers = style.layers.filter(layer => layer.type === 'symbol');
+    height = layers.length * 45;
+    if (map && map.isStyleLoaded()) draw();
+  }
+
+  onMount(() => {
+    createMap(style);
   });
 </script>
 
@@ -229,12 +232,4 @@
 </div>
 
 <style>
-  .label-text {
-    text-anchor: middle;
-  }
-
-  .x-axis .tick {
-    text-anchor: middle;
-    font-size: 0.9em;
-  }
 </style>

@@ -1,17 +1,5 @@
-import * as d3 from 'd3';
+import { getLinearFunction } from './linear';
 import { getStepFunction } from './step';
-
-function getLinearFunction(expression) {
-  const [expressionType, [interpolationType], [input], ...stops] = expression;
-  return value => {
-	if (value < stops[0]) return stops[1];
-	if (value > stops[stops.length - 2]) return stops[stops.length - 1];
-	return d3.scaleLinear(
-	  stops.filter((e, i) => i % 2 === 0),
-	  stops.filter((e, i) => i % 2 === 1)
-	)(value);
-  };
-}
 
 export function getFunction(expression) {
   const [expressionType] = expression;
@@ -21,11 +9,11 @@ export function getFunction(expression) {
     if (interpolationType === 'linear') {
       return getLinearFunction(expression);
     }
-    return () => {};
   }
+  return () => {};
 }
 
-export function getValue(expression, zoom, defaultValue = 0) {
+export function getValue(expression, zoom, defaultValue = null) {
   if (expression == undefined) return defaultValue;
   if (typeof expression === 'number') return expression;
   if (Array.isArray(expression)) {
