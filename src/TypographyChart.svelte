@@ -18,8 +18,15 @@
   let tooltip = {};
 
   let layers;
+  let xAxisFont;
   let zooms = d3.range(minZoom, maxZoom + 1, 2);
   const handleTooltipClose = () => tooltip = {};
+
+  $: {
+    xAxisFont = layers.filter(l => {
+      return l.layout && l.layout['text-font'];
+    })[0].layout['text-font'];
+  }
 
   function getNumericProperty(layer, zoom, propertyType, property) {
     if (!layer[propertyType]) return null;
@@ -85,7 +92,7 @@
       id: 'x-axis',
       source: 'x-axis',
       layout: {
-        "text-font": layers[0].layout['text-font'],
+        "text-font": xAxisFont,
         'icon-allow-overlap': true,
         'symbol-placement': 'point',
         'text-allow-overlap': true,
