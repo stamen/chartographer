@@ -37,7 +37,6 @@
   function getColorProperty(layer, zoom, propertyType, property) {
     if (!layer[propertyType]) return null;
     let value = layer[propertyType][property];
-    console.log(value, zoom);
     return getInterpolatedValue(value, zoom, null);
   }
 
