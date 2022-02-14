@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import mapboxGl from 'mapbox-gl';
   import { getValue as getInterpolatedValue } from './interpolation';
+  import { expandLayers } from './styles/expandLayers';
   import Tooltip from './Tooltip.svelte';
 
   export let style;
@@ -212,8 +213,13 @@
     map.on('click', handleClick);
   }
 
+  function getLayers(style) {
+    const layers = expandLayers(style.layers.filter(layer => layer.type === 'symbol'));
+    return layers;
+  }
+
   $: {
-    layers = style.layers.filter(layer => layer.type === 'symbol');
+    layers = getLayers(style);
     height = layers.length * 45;
     if (map && map.isStyleLoaded()) draw();
   }
