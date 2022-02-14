@@ -17,11 +17,13 @@
   let xScale;
   let yScale;
   let tooltip = {};
+  let hoverTooltip = {};
 
   let layers;
   let xAxisFont;
   let zooms = d3.range(minZoom, maxZoom + 1, 2);
   const handleTooltipClose = () => tooltip = {};
+  const handleHoverTooltipClose = () => hoverTooltip = {};
 
   $: {
     xAxisFont = layers.filter(l => {
@@ -66,6 +68,33 @@
         paint: layer.paint,
       }, null, 2),
       left: e.point.x,
+      top: e.point.y
+    };
+  }
+
+  function handleHover(e) {
+    const feature = map.queryRenderedFeatures(e.point)[0];
+    if (!feature) {
+      handleHoverTooltipClose();
+      return;
+    }
+    const layerId = feature.layer.id.slice(0, feature.layer.id.lastIndexOf('-'));
+    const layer = layers.filter(l => l.id === layerId)[0];
+    if (!layer) {
+      handleHoverTooltipClose();
+      return;
+    }
+
+    let details = feature.layer.metadata.parentId ?
+      feature.layer.metadata.parentId : feature.layer.id;
+
+    if (feature.layer.metadata.descriptor) {
+      details += `\n\n${feature.layer.metadata.descriptor}`;
+    }
+
+    hoverTooltip = {
+      text: details,
+      left: e.point.x + 25,
       top: e.point.y
     };
   }
@@ -189,7 +218,11 @@
           source: id,
           paint,
           layout,
-          type: layer.type
+          type: layer.type,
+          metadata: {
+            ...layer.metadata,
+            parentId: (layer.metadata && layer.metadata.parentId) ? layer.metadata.parentId : layer.id
+          }
         });
       });
     });
@@ -230,6 +263,7 @@
 
     map.on('load', draw);
     map.on('click', handleClick);
+    map.on('mousemove', handleHover);
   }
 
   function getLayers(style) {
@@ -258,6 +292,15 @@
       on:close={handleTooltipClose}
     >
       {tooltip.text || ''}
+    </Tooltip>
+  {/if}
+  {#if Object.keys(hoverTooltip).length > 0}
+    <Tooltip
+      left={hoverTooltip.left}
+      top={hoverTooltip.top}
+      showCloseButton={false}
+    >
+      {hoverTooltip.text || ''}
     </Tooltip>
   {/if}
 </div>

@@ -69,10 +69,18 @@ const expandLayer = layer => {
     // recurse to further expand the layer, if necessary
     return expandedValues
       .map(([descriptor, expandedValue]) => {
+	let combinedDescriptor = descriptor;
+	if (layer?.metadata?.descriptor) {
+	  combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
+	}
+
 	const newLayer = {
 	  ...layer,
 	  id: `${layer.id}-${descriptor}`,
-	  parentId: layer.parentId || layer.id,
+	  metadata: {
+	    parentId: layer?.metadata?.parentId ?? layer.id,
+	    descriptor: combinedDescriptor,
+	  },
 	  [type]: {
 	    ...layer[type],
 	    [key]: expandedValue

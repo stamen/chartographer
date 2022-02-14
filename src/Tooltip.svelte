@@ -4,6 +4,7 @@
 
   export let left;
   export let top;
+  export let showCloseButton = true;
 
   function handleClose() {
     dispatch('close');
@@ -11,7 +12,9 @@
 </script>
 
 <div class="tooltip" style="left: {left}px; top: {top}px;">
-  <button class="close-button" on:click={handleClose}>&times;</button>
+  {#if showCloseButton}
+    <button class="close-button" on:click={handleClose}>&times;</button>
+  {/if}
   <pre>
     <code>
       <slot></slot>
