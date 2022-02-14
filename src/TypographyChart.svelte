@@ -62,6 +62,7 @@
       return;
     }
 
+    handleHoverTooltipClose();
     tooltip = {
       text: JSON.stringify({
         layout: layer.layout,
