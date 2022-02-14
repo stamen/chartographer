@@ -55,7 +55,7 @@
       handleTooltipClose();
       return;
     }
-    const layerId = feature.layer.id.slice(0, feature.layer.id.lastIndexOf('-'));
+    const layerId = feature.layer.id;
     const layer = layers.filter(l => l.id === layerId)[0];
     if (!layer) {
       handleTooltipClose();
@@ -79,7 +79,7 @@
       handleHoverTooltipClose();
       return;
     }
-    const layerId = feature.layer.id.slice(0, feature.layer.id.lastIndexOf('-'));
+    const layerId = feature.layer.id;
     const layer = layers.filter(l => l.id === layerId)[0];
     if (!layer) {
       handleHoverTooltipClose();
@@ -136,6 +136,29 @@
     });
   }
 
+  function getGetExpressions(expression) {
+    if (!Array.isArray(expression)) return null;
+    if (expression[0] === 'get') return expression;
+    let getExpressions = expression
+      .map(getGetExpressions)
+      .filter(v => v)
+      .reduce((agg, current) => {
+        if (agg[0] === 'get' && current[0] !== 'get') {
+          return [agg, ...current];
+        }
+        if (
+          agg.length > 1 && (
+            (Array.isArray(agg) && agg[0] === 'get') ||
+            (Array.isArray(current) && current[0] === 'get')
+          )
+        ) return [agg, current];
+        return agg.concat(current);
+      }, []);
+
+    if (getExpressions[0] === 'get') return [getExpressions];
+    return getExpressions;
+  }
+
   function getLabel(layer) {
     if (layer.id.indexOf('shield') >= 0) {
       return 80;
@@ -145,8 +168,7 @@
     if (!textField) return layer.id;
 
     if (Array.isArray(textField)) {
-      const possibleEntries = textField
-        .filter(v => Array.isArray(v) && v[0] === 'get');
+      const possibleEntries = getGetExpressions(textField);
       if (possibleEntries.length) {
         return possibleEntries[0][1];
       }
@@ -157,74 +179,89 @@
 
   function drawLabels() {
     layers.forEach(layer => {
+      // Create one source per layer, spacing features out along valid zooms for
+      // the layer
+      let features = [];
       zooms.forEach(zoom => {
-        const id = `${layer.id}-${zoom}`;
         if (!isValidZoom(layer, zoom)) return;
 
-        map.addSource(id, {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: [
-              {
-                type: 'Feature',
-                properties: {
-                  label: getLabel(layer)
-                },
-                geometry: {
-                  type: 'Point',
-                  coordinates: [
-                    xScale(zoom),
-                    yScale(layer.id)
-                  ]
-                }
-              }
+        // NB: we are setting the zoom here as a property, all rendering happens
+        // at the same zoom level in this visualization
+        features.push({
+          type: 'Feature',
+          properties: {
+            label: getLabel(layer),
+            zoom
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: [
+              xScale(zoom),
+              yScale(layer.id)
             ]
           }
         });
+      });
 
-        const paintOverrides = {
-          'text-color': getColorProperty(layer, zoom, 'paint', 'text-color'),
-          'text-halo-blur': getNumericProperty(layer, zoom, 'paint', 'text-halo-blur'),
-          'text-halo-color': getColorProperty(layer, zoom, 'paint', 'text-halo-color'),
-          'text-halo-width': getNumericProperty(layer, zoom, 'paint', 'text-halo-width'),
-        };
+      map.addSource(layer.id, {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features
+        }
+      });
 
-        // Selectively extend paint properties, avoid adding null values
-        const paint = {
-          ...layer.paint,
-          ...Object.fromEntries(Object.entries(paintOverrides).filter(([k, v]) => v !== null)),
-        };
-
-        const layoutOverrides = {
-          'icon-allow-overlap': true,
-          'icon-size': getNumericProperty(layer, zoom, 'layout', 'icon-size'),
-          'letter-spacing': getNumericProperty(layer, zoom, 'layout', 'letter-spacing'),
-          'max-width': getNumericProperty(layer, zoom, 'layout', 'max-width'),
+      // Replace zoom-dependent style expressions with expressions that use the
+      // zoom property set above at the feature level
+      let paint = {};
+      if (layer.paint) {
+        paint = JSON.parse(JSON.stringify(layer.paint).replaceAll('["zoom"]', '["get", "zoom"]'));
+      }
+      let layout = {};
+      if (layer.layout) {
+        // XXX these aren't supported yet, this is likely okay for most uses
+        const dataExpressionsDisallowed = [
+          'icon-text-fit-padding',
+          'symbol-spacing',
+          'text-fit-padding',
+          'text-padding',
+        ];
+        layout = Object.fromEntries(
+          Object.entries(layer.layout)
+            .map(([k, v]) => {
+              if (dataExpressionsDisallowed.indexOf(k) >= 0) {
+                return [k, v];
+              }
+              else {
+                return [
+                  k,
+                  JSON.parse(JSON.stringify(v).replaceAll('["zoom"]', '["get", "zoom"]'))
+                ];
+              }
+            })
+        );
+        layout = {
+          ...layout,
+          'icon-allow-overlap': true, // Add overrides to force visibility
           'symbol-placement': 'point',
           'text-allow-overlap': true,
-          'text-field': '{label}',
-          'text-line-height': getNumericProperty(layer, zoom, 'layout', 'text-line-height'),
-          'text-size': getNumericProperty(layer, zoom, 'layout', 'text-size'),
         };
 
-        // Selectively extend layout properties, avoid adding null values
-        const layout = {
-          ...layer.layout,
-          ...Object.fromEntries(Object.entries(layoutOverrides).filter(([k, v]) => v !== null)),
-        };
+        if (layer.layout['text-field']) {
+          layout['text-field'] = '{label}';
+        }
+      }
 
-        map.addLayer({
-          id: id,
-          source: id,
-          paint,
-          layout,
-          type: layer.type,
-          metadata: {
-            ...layer.metadata,
-            parentId: (layer.metadata && layer.metadata.parentId) ? layer.metadata.parentId : layer.id
-          }
-        });
+      map.addLayer({
+        id: layer.id,
+        source: layer.id,
+        paint,
+        layout,
+        type: layer.type,
+        metadata: {
+          ...layer.metadata,
+          parentId: (layer.metadata && layer.metadata.parentId) ? layer.metadata.parentId : layer.id
+        }
       });
     });
   }
