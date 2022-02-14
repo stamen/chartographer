@@ -317,14 +317,20 @@
   function draw() {
     const bounds = map.getBounds();
     const boundsWidth = Math.abs(bounds.getEast() - bounds.getWest());
+    const boundsHeight = Math.abs(bounds.getNorth() - bounds.getSouth());
+    const xPadding = boundsWidth * 0.08;
+    const yPadding = boundsHeight * 0.01;
     xScale = d3.scaleLinear(
       [minZoom, maxZoom],
-      [bounds.getWest() + boundsWidth * 0.08, bounds.getEast() - boundsWidth * 0.08]
+      [bounds.getWest() + xPadding, bounds.getEast() - xPadding]
     );
-    yScale = d3.scaleBand([
-      'x-axis',
-      ...layers.map(({ id }) => id)
-    ], [bounds.getNorth(), bounds.getSouth()])
+    yScale = d3.scaleBand(
+      [
+        'x-axis',
+        ...layers.map(({ id }) => id)
+      ],
+      [bounds.getNorth(), bounds.getSouth() + yPadding]
+    );
 
     drawAxis();
     drawLines();
@@ -345,7 +351,8 @@
       doubleClickZoom: false,
       dragPan: false,
       scrollZoom: false,
-      zoom: 16
+      center: [0, 10],
+      zoom: 14
     });
 
     map.on('load', draw);
