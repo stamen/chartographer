@@ -106,6 +106,25 @@
     });
   }
 
+  function getLabel(layer) {
+    if (layer.id.indexOf('shield') >= 0) {
+      return 80;
+    }
+
+    const textField = layer.layout['text-field'];
+    if (!textField) return layer.id;
+
+    if (Array.isArray(textField)) {
+      const possibleEntries = textField
+        .filter(v => Array.isArray(v) && v[0] === 'get');
+      if (possibleEntries.length) {
+        return possibleEntries[0][1];
+      }
+    }
+
+    return textField;
+  }
+
   function drawLabels() {
     layers.forEach(layer => {
       zooms.forEach(zoom => {
@@ -120,7 +139,7 @@
               {
                 type: 'Feature',
                 properties: {
-                  label: layer.id.indexOf('shield') >= 0 ? 80 : layer.id
+                  label: getLabel(layer)
                 },
                 geometry: {
                   type: 'Point',
