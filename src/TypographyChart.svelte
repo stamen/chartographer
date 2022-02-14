@@ -177,6 +177,54 @@
     return textField;
   }
 
+  function drawLines() {
+    let features = layers.map(layer => {
+      let color = layer?.paint?.['icon-color'];
+      if (!color) {
+        color = layer?.paint?.['text-color'];
+      }
+      if (!color) color = 'black';
+
+      return {
+        type: 'Feature',
+        properties: { color },
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [
+              xScale(layer.minzoom || minZoom),
+              yScale(layer.id)
+            ],
+            [
+              xScale(layer.maxzoom || maxZoom),
+              yScale(layer.id)
+            ],
+          ]
+        }
+      };
+    });
+
+    map.addSource('lines', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features
+      }
+    });
+
+    map.addLayer({
+      id: 'lines',
+      source: 'lines',
+      paint: {
+        'line-width': 15,
+        'line-color': ['get', 'color'],
+        'line-opacity': 0.1
+      },
+      layout: {},
+      type: 'line',
+    });
+  }
+
   function drawLabels() {
     layers.forEach(layer => {
       // Create one source per layer, spacing features out along valid zooms for
@@ -279,6 +327,7 @@
     ], [bounds.getNorth(), bounds.getSouth()])
 
     drawAxis();
+    drawLines();
     drawLabels();
   }
 
