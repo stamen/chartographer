@@ -298,7 +298,7 @@
         };
 
         if (layer.layout['text-field']) {
-          layout['text-field'] = '{label}';
+          layout['text-field'] = ['get', 'label'];
         }
       }
 
