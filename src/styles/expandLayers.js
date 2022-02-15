@@ -29,7 +29,7 @@ const expandLayer = layer => {
   const expandableProperties = getExpandableProperties(layer);
   if (expandableProperties.length === 0) return [layer];
 
-  const { type, key, value } = expandableProperties.pop();
+  const { type, key, value } = expandableProperties[0];
 
   if (value[0] === 'case') {
     const [expressionType, ...cases] = value;
