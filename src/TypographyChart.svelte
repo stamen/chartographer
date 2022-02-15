@@ -145,27 +145,16 @@
     });
   }
 
-  function getGetExpressions(expression) {
+  function getGetExpressionsInner(expression) {
     if (!Array.isArray(expression)) return null;
     if (expression[0] === 'get') return expression;
-    let getExpressions = expression
-      .map(getGetExpressions)
-      .filter(v => v)
-      .reduce((agg, current) => {
-        if (agg[0] === 'get' && current[0] !== 'get') {
-          return [agg, ...current];
-        }
-        if (
-          agg.length > 1 && (
-            (Array.isArray(agg) && agg[0] === 'get') ||
-            (Array.isArray(current) && current[0] === 'get')
-          )
-        ) return [agg, current];
-        return agg.concat(current);
-      }, []);
+    return expression.map(getGetExpressionsInner).filter(v => !!v);
+  }
 
-    if (getExpressions[0] === 'get') return [getExpressions];
-    return getExpressions;
+  function getGetExpressions(expression) {
+    return getGetExpressionsInner(expression)
+      .flat(Infinity)
+      .filter(v => v !== 'get');
   }
 
   function getLabel(layer) {
@@ -177,10 +166,7 @@
     if (!textField) return layer.id;
 
     if (Array.isArray(textField)) {
-      const possibleEntries = getGetExpressions(textField);
-      if (possibleEntries.length) {
-        return possibleEntries[0][1];
-      }
+      return getGetExpressions(textField)?.[0] ?? textField;
     }
 
     return textField;
