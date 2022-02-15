@@ -25,6 +25,15 @@
   const handleTooltipClose = () => tooltip = {};
   const handleHoverTooltipClose = () => hoverTooltip = {};
 
+  // XXX These properties aren't currently supported in this chart, this is 
+  // likely okay for most uses
+  const dataExpressionsDisallowed = [
+    'icon-text-fit-padding',
+    'symbol-spacing',
+    'text-fit-padding',
+    'text-padding',
+  ];
+
   $: {
     xAxisFont = layers.filter(l => {
       return l.layout && l.layout['text-font'];
@@ -267,13 +276,6 @@
       }
       let layout = {};
       if (layer.layout) {
-        // XXX these aren't supported yet, this is likely okay for most uses
-        const dataExpressionsDisallowed = [
-          'icon-text-fit-padding',
-          'symbol-spacing',
-          'text-fit-padding',
-          'text-padding',
-        ];
         layout = Object.fromEntries(
           Object.entries(layer.layout)
             .map(([k, v]) => {
