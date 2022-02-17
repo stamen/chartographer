@@ -98,9 +98,22 @@
     let details = feature.layer.metadata.parentId ?
       feature.layer.metadata.parentId : feature.layer.id;
 
-    if (feature.layer.metadata.descriptor) {
+    const { conditions } = feature.layer.metadata;
+    if (conditions) {
+      conditions.forEach(({ conditionType, type, key, value, input }) => {
+        details += `\n${type}.${key}: `;
+        if (conditionType === 'case') {
+          details += `${value}`;
+        }
+        if (conditionType === 'match') {
+          details += `${JSON.stringify(input)} == ${JSON.stringify(value)}`;
+        }
+      });
+    }
+    else if (feature.layer.metadata.descriptor) {
       details += `\n\n${feature.layer.metadata.descriptor}`;
     }
+
 
     hoverTooltip = {
       text: details,

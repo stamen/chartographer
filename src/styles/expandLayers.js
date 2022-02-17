@@ -41,7 +41,16 @@ const expandLayer = layer => {
 	descriptor = 'fallback';
 	caseValue = cases[i];
       }
-      expandedValues.push({ descriptor, expandedValue: caseValue });
+      expandedValues.push({
+	descriptor,
+	expandedValue: caseValue,
+	condition: {
+	  conditionType: 'case',
+	  type,
+	  key,
+	  value: descriptor
+	}
+      });
     }
   }
 
@@ -65,7 +74,7 @@ const expandLayer = layer => {
       // Look at layer metadata to see if matches traversed thus far are
       // mutually exclusive to this candidate layer. If so, don't add this
       // layer.
-      const existingMatches = layer?.metadata?.matches ?? [];
+      const existingMatches = layer?.metadata?.conditions ?? [];
       const existingMatchesAreMutuallyExclusive = existingMatches.some(otherMatch => {
 	if (JSON.stringify(input) !== JSON.stringify(otherMatch.input)) return false;
 	if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
@@ -79,7 +88,13 @@ const expandLayer = layer => {
       expandedValues.push({
 	descriptor,
 	expandedValue: output,
-	match: { input, value: matchSeekValue }
+	condition: {
+	  conditionType: 'match',
+	  type,
+	  key,
+	  input,
+	  value: matchSeekValue
+	}
       });
     }
   }
@@ -88,13 +103,14 @@ const expandLayer = layer => {
     // For each value to expand, create a new layer with that value, then
     // recurse to further expand the layer, if necessary
     return expandedValues
-      .map(({ descriptor, expandedValue, match }) => {
+      .map(({ descriptor, expandedValue, condition }) => {
 	let combinedDescriptor = descriptor;
 	if (layer?.metadata?.descriptor) {
 	  combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
 	}
-	let matches = layer?.metadata?.matches ?? [];
-	if (match) matches.push(match);
+
+	let conditions = [...layer?.metadata?.conditions ?? []];
+	if (condition) conditions.push(condition);
 
 	const newLayer = {
 	  ...layer,
@@ -102,7 +118,7 @@ const expandLayer = layer => {
 	  metadata: {
 	    parentId: layer?.metadata?.parentId ?? layer.id,
 	    descriptor: combinedDescriptor,
-	    matches
+	    conditions
 	  },
 	  [type]: {
 	    ...layer[type],
