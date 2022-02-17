@@ -41,7 +41,7 @@ const expandLayer = layer => {
 	descriptor = 'fallback';
 	caseValue = cases[i];
       }
-      expandedValues.push([descriptor, caseValue]);
+      expandedValues.push({ descriptor, expandedValue: caseValue });
     }
   }
 
@@ -49,18 +49,38 @@ const expandLayer = layer => {
     const [expressionType, input, ...matches] = value;
 
     for (let i = 0; i < matches.length; i += 2) {
+      let matchSeekValue = matches[i];
+      let output = matches[i + 1];
+
       let descriptor = [
 	JSON.stringify(input),
-	JSON.stringify(matches[i]),
+	JSON.stringify(matchSeekValue),
       ].join('==');
-      let matchValue = matches[i + 1];
 
       if (i === matches.length - 1) {
-	descriptor = 'fallback';
-	matchValue = matches[i];
+	descriptor = matchSeekValue = 'fallback';
+	output = matches[i];
       }
 
-      expandedValues.push([descriptor, matchValue]);
+      // Look at layer metadata to see if matches traversed thus far are
+      // mutually exclusive to this candidate layer. If so, don't add this
+      // layer.
+      const existingMatches = layer?.metadata?.matches ?? [];
+      const existingMatchesAreMutuallyExclusive = existingMatches.some(otherMatch => {
+	if (JSON.stringify(input) !== JSON.stringify(otherMatch.input)) return false;
+	if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
+	  return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+	}
+	return matchSeekValue !== otherMatch.value;
+      });
+
+      if (existingMatchesAreMutuallyExclusive) continue;
+
+      expandedValues.push({
+	descriptor,
+	expandedValue: output,
+	match: { input, value: matchSeekValue }
+      });
     }
   }
 
@@ -68,11 +88,13 @@ const expandLayer = layer => {
     // For each value to expand, create a new layer with that value, then
     // recurse to further expand the layer, if necessary
     return expandedValues
-      .map(([descriptor, expandedValue]) => {
+      .map(({ descriptor, expandedValue, match }) => {
 	let combinedDescriptor = descriptor;
 	if (layer?.metadata?.descriptor) {
 	  combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
 	}
+	let matches = layer?.metadata?.matches ?? [];
+	if (match) matches.push(match);
 
 	const newLayer = {
 	  ...layer,
@@ -80,6 +102,7 @@ const expandLayer = layer => {
 	  metadata: {
 	    parentId: layer?.metadata?.parentId ?? layer.id,
 	    descriptor: combinedDescriptor,
+	    matches
 	  },
 	  [type]: {
 	    ...layer[type],
