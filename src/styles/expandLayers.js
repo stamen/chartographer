@@ -14,6 +14,98 @@ const getExpandableProperties = layer => {
     .reduce((agg, current) => agg.concat(current), []);
 };
 
+
+/**
+ * Expand a case expression to all the possible values the case could output
+ *
+ * @param {string} type - 'layout' or 'paint'
+ * @param {string} key - the property name
+ * @param {Array} expression - the expression
+ * @returns {Array} the expanded values
+ */
+const expandCaseExpression = (type, key, expression) => {
+  const [expressionType, ...cases] = expression;
+  let expandedValues = [];
+
+  for (let i = 0; i < cases.length; i += 2) {
+    let descriptor = JSON.stringify(cases[i]);
+    let output = cases[i + 1];
+    if (i === cases.length - 1) {
+      descriptor = 'fallback';
+      output = cases[i];
+    }
+    expandedValues.push({
+      descriptor,
+      expandedValue: output,
+      condition: {
+	conditionType: 'case',
+	type,
+	key,
+	value: descriptor
+      }
+    });
+  }
+  return expandedValues;
+};
+
+
+/**
+ * Expand a match expression to all the possible values the match could output
+ *
+ * @param {string} layer - the layer the expression is part of
+ * @param {string} type - 'layout' or 'paint'
+ * @param {string} key - the property name
+ * @param {string} expression - the expression
+ * @returns {Array} the expanded values
+ */
+const expandMatchExpression = (layer, type, key, expression) => {
+  const [expressionType, input, ...matches] = expression;
+  let expandedValues = [];
+
+  for (let i = 0; i < matches.length; i += 2) {
+    let matchSeekValue = matches[i];
+    let output = matches[i + 1];
+
+    let descriptor = [
+      JSON.stringify(input),
+      JSON.stringify(matchSeekValue),
+    ].join('==');
+
+    if (i === matches.length - 1) {
+      descriptor = matchSeekValue = 'fallback';
+      output = matches[i];
+    }
+
+    // Look at layer metadata to see if matches traversed thus far are
+    // mutually exclusive to this candidate layer. If so, don't add this
+    // layer.
+    const existingMatches = layer?.metadata?.conditions ?? [];
+    const existingMatchesAreMutuallyExclusive = existingMatches.some(otherMatch => {
+      if (JSON.stringify(input) !== JSON.stringify(otherMatch.input)) return false;
+      if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
+	return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+      }
+      return matchSeekValue !== otherMatch.value;
+    });
+
+    if (existingMatchesAreMutuallyExclusive) continue;
+
+    expandedValues.push({
+      descriptor,
+      expandedValue: output,
+      condition: {
+	conditionType: 'match',
+	type,
+	key,
+	input,
+	value: matchSeekValue
+      }
+    });
+  }
+
+  return expandedValues;
+}
+
 /**
  * Expand a layer based on case and match expressions.
  *
@@ -31,72 +123,15 @@ const expandLayer = layer => {
 
   const { type, key, value } = expandableProperties[0];
 
-  if (value[0] === 'case') {
-    const [expressionType, ...cases] = value;
-
-    for (let i = 0; i < cases.length; i += 2) {
-      let descriptor = JSON.stringify(cases[i]);
-      let caseValue = cases[i + 1];
-      if (i === cases.length - 1) {
-	descriptor = 'fallback';
-	caseValue = cases[i];
-      }
-      expandedValues.push({
-	descriptor,
-	expandedValue: caseValue,
-	condition: {
-	  conditionType: 'case',
-	  type,
-	  key,
-	  value: descriptor
-	}
-      });
-    }
-  }
-
-  if (value[0] === 'match') {
-    const [expressionType, input, ...matches] = value;
-
-    for (let i = 0; i < matches.length; i += 2) {
-      let matchSeekValue = matches[i];
-      let output = matches[i + 1];
-
-      let descriptor = [
-	JSON.stringify(input),
-	JSON.stringify(matchSeekValue),
-      ].join('==');
-
-      if (i === matches.length - 1) {
-	descriptor = matchSeekValue = 'fallback';
-	output = matches[i];
-      }
-
-      // Look at layer metadata to see if matches traversed thus far are
-      // mutually exclusive to this candidate layer. If so, don't add this
-      // layer.
-      const existingMatches = layer?.metadata?.conditions ?? [];
-      const existingMatchesAreMutuallyExclusive = existingMatches.some(otherMatch => {
-	if (JSON.stringify(input) !== JSON.stringify(otherMatch.input)) return false;
-	if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
-	  return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
-	}
-	return matchSeekValue !== otherMatch.value;
-      });
-
-      if (existingMatchesAreMutuallyExclusive) continue;
-
-      expandedValues.push({
-	descriptor,
-	expandedValue: output,
-	condition: {
-	  conditionType: 'match',
-	  type,
-	  key,
-	  input,
-	  value: matchSeekValue
-	}
-      });
-    }
+  switch (value[0]) {
+    case 'case':
+      expandedValues = expandCaseExpression(type, key, value);
+      break;
+    case 'match':
+      expandedValues = expandMatchExpression(layer, type, key, value);
+      break;
+    default:
+      break;
   }
 
   if (expandedValues.length > 0) {
