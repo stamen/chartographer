@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "d3": "^7.1.1",
+    "mapbox-gl": "^1.13.2",
     "sirv-cli": "^1.0.0"
   }
 }

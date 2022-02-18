@@ -1,6 +1,7 @@
 <script>
   import FillsChart from './FillsChart.svelte';
   import LinesChart from './LinesChart.svelte';
+  import TypographyChart from './TypographyChart.svelte';
 
   export let selectedTab;
   export let style;
@@ -14,6 +15,10 @@
   {:else}
     {#if selectedTab === 'lines'}
       <LinesChart {style} {backgroundSvgData} />
+    {:else}
+      {#if selectedTab === 'typography'}
+        <TypographyChart {style} />
+      {/if}
     {/if}
   {/if}
 </div>
