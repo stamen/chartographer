@@ -2,6 +2,7 @@
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
+  import { getValue as getInterpolatedValue } from './interpolation';
 
   export let style;
   export let minZoom = 0;
@@ -90,36 +91,23 @@
 
     const gradientStops = [];
 
-    if (colorIsGradient) {
-      const gradientArray = color.slice(3);
+    if (colorIsGradient || opacityIsGradient) {
+      const opacityWithDefault = opacity || 1;
+      const gradientColorArray = colorIsGradient ? color.slice(3) : [];
+      const gradientOpacityArray = opacityIsGradient ? opacity.slice(3) : [];
 
-      for (let i = 0; i < gradientArray.length; i += 2) {
-        const offset = ((xScale(gradientArray[i]) - lineStart) / lineLength) * 100;
+      const stops = gradientColorArray.concat(gradientOpacityArray).filter((v,i) => i % 2 === 0).sort((a, b) => a - b);
 
+      stops.forEach(zoomStop => {
+        const colorOutput = colorIsGradient ? getInterpolatedValue(color, zoomStop, null) : color;
+        let opacityOutput = opacityIsGradient ? getInterpolatedValue(opacityWithDefault, zoomStop, null) : opacityWithDefault;
+        opacityOutput = parseFloat(opacityOutput.toFixed(2));
         gradientStops.push({
-          offset,
-          stopColor: gradientArray[i + 1],
-          stopOpacity: 1
+          offset: ((xScale(zoomStop) - lineStart) / lineLength) * 100,
+          stopColor: colorOutput,
+          stopOpacity: opacityOutput
         });
-      }
-    }
-
-    if (opacityIsGradient && !colorIsGradient) {
-      const gradientArray = opacity.slice(3);
-
-      for (let i = 0; i < gradientArray.length; i += 2) {
-        const offset = ((xScale(gradientArray[i]) - lineStart) / lineLength) * 100;
-        gradientStops.push({
-          offset,
-          stopColor: color,
-          stopOpacity: gradientArray[i + 1]
-        });
-      }
-    }
-
-    if (colorIsGradient && opacityIsGradient) {
-      // TODO handle these cases
-      console.log(layer.id, 'both color and opacity are gradients');
+      })
     }
 
     if (gradientStops.length > 1) {
