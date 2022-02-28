@@ -4,6 +4,7 @@
   import { readQuery, writeQuery } from './query';
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
+  import computedStyleToInlineStyle from 'computed-style-to-inline-style';
 
   export let selectedTab;
   export let style;
@@ -71,21 +72,17 @@
 
   function downloadSvg() {
     let svg = document.getElementById(selectedTab);
-    // Don't mutate the rendered SVG in browser
-    svg = svg.cloneNode(true);
-    // Add back style elements from css
-    svg.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif';
-    Array.prototype.forEach.call(svg.getElementsByClassName('x-axis'), testElement => {
-      testElement.style.fontSize = '0.9em';
-      testElement.style.textAnchor = 'middle'
+
+    computedStyleToInlineStyle(svg, {
+      recursive:true,
+      // Limiting to these properties for now since the function runs much faster
+      properties: ['font-size', 'font-family', 'text-anchor']
     });
-    Array.prototype.forEach.call(svg.getElementsByClassName('y-axis'), testElement => {
-      testElement.style.fontSize = '0.9em';
-    });
+    
     svg = new XMLSerializer().serializeToString(svg); 
     const blob = new Blob([svg]);
     const element = document.createElement("a");
-    element.download = `${selectedTab}-chart.svg`;
+    element.download = `${style.id}-${selectedTab}-chart.svg`;
     element.href = window.URL.createObjectURL(blob);
     element.click();
     element.remove();
