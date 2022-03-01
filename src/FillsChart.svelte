@@ -174,7 +174,7 @@
 </script>
 
 <div class="fills-chart">
-  <svg {width} {height}>
+  <svg id="fill" {width} {height}>
     <defs>
       {#each gradients as gradient}
         <linearGradient id={gradient.id}>
