@@ -10,7 +10,7 @@
 </script>
 
 <div class="tab {selected ? 'selected' : ''}" on:click={handleClick}>
-  {label}
+  {label[0].toUpperCase() + label.substring(1)}
 </div>
 
 <style>
