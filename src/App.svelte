@@ -140,7 +140,6 @@
 
   .download-button {
     display: flex;
-<<<<<<< HEAD
     align-self: center;
   }
 
@@ -165,12 +164,6 @@
     top: 0;
     display: flex;
     align-items: center;
-=======
-  }
-
-  .top-bar {
-    display: flex;
->>>>>>> main
     justify-content: space-between;
   }
 </style>
