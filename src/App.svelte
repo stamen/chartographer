@@ -139,8 +139,8 @@
   .top-bar {
     position: fixed;
     background-color: white;
-    padding: 8px;
-    width: calc(100% - 16px);
+    padding: var(--app-padding);
+    width: calc(100% - (var(--app-padding) * 2));
     height: 36px;
     top: 0;
     display: flex;
