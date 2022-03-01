@@ -4,6 +4,7 @@
   import { readQuery, writeQuery } from './query';
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
+  import computedStyleToInlineStyle from 'computed-style-to-inline-style';
 
   export let selectedTab;
   export let style;
@@ -68,6 +69,24 @@
   function updateBackgroundRect(backgroundRect, backgroundGradient) {
     backgroundSvgData = { gradientDefs: backgroundGradient, rect: backgroundRect };
   }
+
+  function downloadSvg() {
+    let svg = document.getElementById(selectedTab);
+
+    computedStyleToInlineStyle(svg, {
+      recursive:true,
+      // Limiting to these properties for now since the function runs much faster
+      properties: ['font-size', 'font-family', 'text-anchor']
+    });
+    
+    svg = new XMLSerializer().serializeToString(svg); 
+    const blob = new Blob([svg]);
+    const element = document.createElement("a");
+    element.download = `${style.id}-${selectedTab}-chart.svg`;
+    element.href = window.URL.createObjectURL(blob);
+    element.click();
+    element.remove();
+  }
 </script>
 
 <main
@@ -76,7 +95,11 @@
   on:drop={handleDrop}
 >
   {#if style}
-    <Tabs on:tabchange={handleTabChange} />
+    <div class="top-bar"><Tabs on:tabchange={handleTabChange} />
+      {#if selectedTab !== 'typography'}
+      <button on:click={downloadSvg} class="download-button">Download SVG</button>
+      {/if}
+    </div>
     <TabsContent {selectedTab} {style} {updateBackgroundRect} {backgroundSvgData} />
   {:else}
     <div class="drop">
@@ -98,5 +121,14 @@
     align-items: center;
     height: 100%;
     justify-content: center;
+  }
+
+  .download-button {
+    display: flex;
+  }
+
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
   }
 </style>
