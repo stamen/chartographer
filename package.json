@@ -24,6 +24,7 @@
     "svelte": "^3.0.0"
   },
   "dependencies": {
+    "color": "^4.2.1",
     "computed-style-to-inline-style": "^3.0.0",
     "d3": "^7.1.1",
     "mapbox-gl": "^1.13.2",

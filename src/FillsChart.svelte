@@ -1,5 +1,6 @@
 <script>
   import * as d3 from 'd3';
+  import Color from 'color';
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getValue as getInterpolatedValue } from './interpolation';
@@ -109,7 +110,7 @@
           opacityOutput = parseFloat(opacityOutput.toFixed(2));
           gradientStops.push({
             offset: ((xScale(zoomStop) - rectStart) / rectWidth) * 100,
-            stopColor: colorOutput,
+            stopColor: Color(colorOutput).rgb().string(),
             stopOpacity: opacityOutput
           });
         })
@@ -131,9 +132,17 @@
         color = `url('#${l.id}')`;
       }
 
+      let nextColor = color;
+
+      if (Array.isArray(color) || !color) {
+        nextColor = color;
+      } else {
+        nextColor = color.includes('url') ? color : Color(color).rgb().string();
+      }
+    
       return {
         ...l,
-        fill: color,
+        fill: nextColor,
         stroke: strokeColor,
         strokeWidth: strokeWidth,
       };
