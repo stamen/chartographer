@@ -1,6 +1,8 @@
 <script>
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
+  import Fa from 'svelte-fa/src/fa.svelte'
+  import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons'
   import { readQuery, writeQuery } from './query';
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
@@ -66,6 +68,10 @@
      handleTabChange({ detail: { tab: 'fill' } });
   }
 
+  function clearStyle() {
+    style = undefined;
+  }
+
   function updateBackgroundRect(backgroundRect, backgroundGradient) {
     backgroundSvgData = { gradientDefs: backgroundGradient, rect: backgroundRect };
   }
@@ -95,12 +101,13 @@
   on:drop={handleDrop}
 >
   {#if style}
-    <div class="top-bar"><Tabs on:tabchange={handleTabChange} />
-      {#if selectedTab !== 'typography'}
-      <button on:click={downloadSvg} class="download-button">Download SVG</button>
-      {/if}
-    </div>
+  <div class="top-bar"><Tabs on:tabchange={handleTabChange} {selectedTab} />
+    {#if selectedTab !== 'typography'}
+    <button on:click={downloadSvg} class="download-button">Download SVG <div class="icon"><Fa icon={faDownload} /></div></button>
+    {/if}
+  </div>
     <TabsContent {selectedTab} {style} {updateBackgroundRect} {backgroundSvgData} />
+    <button class="clear-style-button" on:click={clearStyle}>Clear style <div class="icon"><Fa icon={faTrash} /></div></button>
   {:else}
     <div class="drop">
       <div>Drop a style here</div>
@@ -114,6 +121,14 @@
     height: 100%;
   }
 
+  button {
+    margin: 0px;
+    font-size: 0.9em;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
   .drop {
     font-size: 5em;
     display: flex;
@@ -125,10 +140,30 @@
 
   .download-button {
     display: flex;
+    align-self: center;
+  }
+
+  .clear-style-button {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+  }
+
+  .icon {
+    margin-left: 6px;
   }
 
   .top-bar {
+    position: fixed;
+    background-color: white;
+    padding: var(--app-padding);
+    width: calc(100% - (var(--app-padding) * 2));
+    height: 36px;
+    top: 0;
     display: flex;
+    align-items: center;
     justify-content: space-between;
   }
 </style>

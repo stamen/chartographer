@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   export let label;
-
+  export let selected;
   const dispatch = createEventDispatcher();
 
   function handleClick() {
@@ -9,12 +9,17 @@
   }
 </script>
 
-<div class="tab" on:click={handleClick}>
-  {label}
+<div class="tab {selected ? 'selected' : ''}" on:click={handleClick}>
+  {label[0].toUpperCase() + label.substring(1)}
 </div>
 
 <style>
   .tab {
-    margin: 0 1em;
+    margin-right: 1em;
+    cursor: pointer;
+  }
+
+  .selected {
+    text-decoration: underline;
   }
 </style>

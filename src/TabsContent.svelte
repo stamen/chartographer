@@ -26,6 +26,7 @@
 <style>
   .tabs-content {
     display: flex;
-    margin-top: 1em;
+    margin-top: 2.5em;
+    padding: var(--app-padding);
   }
 </style>
