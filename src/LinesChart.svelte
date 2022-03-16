@@ -2,15 +2,13 @@
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
-  import { getValue as getInterpolatedValue } from './interpolation';
+  import { getColor } from './get-color';
+  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH } from './constants';
 
   export let style;
-  export let minZoom = 0;
-  export let maxZoom = 24;
   export let backgroundSvgData;
 
-  const width = 1000;
-  let height;
+  let chartHeight;
   const margin = {
     bottom: 25,
     left: 250,
@@ -39,108 +37,6 @@
   let layers;
 
   let backgroundRect;
-
-  function getColor(layer) {
-    const lineStart = xScale(layer.minzoom || minZoom);
-    const lineLength = xScale(layer.maxzoom || maxZoom) - xScale(layer.minzoom ||
-      minZoom);
-
-    let color;
-    let opacity;
-    let strokeColor;
-    let strokeWidth = 0;
-    switch (layer.type) {
-      case 'fill': 
-        color = layer?.paint?.['fill-color'];
-        opacity = layer?.paint?.['fill-opacity'];
-        strokeColor = layer?.paint?.['fill-outline-color'];
-        if (strokeColor) strokeWidth = 1;
-        break;
-      case 'background':
-        color = layer?.paint?.['background-color'];
-        break;
-      case 'line':
-        color = layer?.paint?.['line-color'];
-        opacity = layer?.paint?.['line-opacity'];
-        break;
-      case 'symbol':
-        color = layer?.paint?.['text-color'];
-        opacity = layer?.paint?.['text-opacity'];
-        break;
-      default: {}
-    }
-
-    // Defaults
-    color = color || 'black';
-    opacity = opacity !== undefined ? opacity : 1;
-
-    let colorIsGradient = false;
-    let opacityIsGradient = false;
-
-    if (Array.isArray(color) && color[0] === 'interpolate') {
-      const [, [interpolationType], [attribute]] = color;
-
-      if (interpolationType === 'linear' && attribute === 'zoom') {
-        colorIsGradient = true;
-      }
-    }
-
-    if (Array.isArray(opacity) && opacity[0] === 'interpolate') {
-      const [, [interpolationType], [attribute]] = opacity;
-
-      if (interpolationType === 'linear' && attribute === 'zoom') {
-        opacityIsGradient = true;
-      }
-    }
-
-    const gradientStops = [];
-
-    if (colorIsGradient || opacityIsGradient) {
-      // This should have better handling elsewhere
-      opacity = Array.isArray(opacity) && opacity[0] === 'literal' ? opacity[1] : opacity;
-      const gradientColorArray = colorIsGradient ? color.slice(3) : [];
-      const gradientOpacityArray = opacityIsGradient ? opacity.slice(3) : [];
-
-      const stops = gradientColorArray.concat(gradientOpacityArray).filter((v,i) => i % 2 === 0).sort((a, b) => a - b);
-
-      stops.forEach(zoomStop => {
-        const colorOutput = colorIsGradient ? getInterpolatedValue(color, zoomStop, null) : color;
-        let opacityOutput = opacityIsGradient ? getInterpolatedValue(opacity, zoomStop, null) : opacity;
-        opacityOutput = parseFloat(opacityOutput.toFixed(2));
-        gradientStops.push({
-          offset: ((xScale(zoomStop) - lineStart) / lineLength) * 100,
-          stopColor: colorOutput,
-          stopOpacity: opacityOutput
-        });
-      })
-    }
-
-    if (gradientStops.length > 1) {
-      gradients = [
-        ...gradients,
-        {
-          id: layer.id,
-          stops: gradientStops.map(stop => ({
-            offset: `${stop.offset}%`,
-            stopColor: stop.stopColor,
-            stopOpacity: stop.stopOpacity,
-          }))
-        }
-      ];
-
-      color = `url('#${layer.id}')`;
-    }
-
-    // Special handling for hidden layers
-    const isNotVisible = layer?.layout?.visibility === 'none';
-
-    if (isNotVisible) {
-      color = 'rgba(0, 0, 0, 0)';
-      strokeColor = 'rgba(0, 0, 0, 0)';
-    }
-
-    return { color, strokeColor, strokeWidth };
-  }
 
   // Gathers outputs of expression for line width based on expression type
   const gatherOutputs = exp => {
@@ -209,8 +105,8 @@
 
   function getPath(layer) {
     const width = layer.paint ? layer.paint['line-width'] : null;
-    const layerMaxZoom = layer.maxzoom || maxZoom;
-    const layerMinZoom = layer.minzoom !== undefined ? layer.minzoom : minZoom;
+    const layerMaxZoom = layer.maxzoom || MAX_ZOOM;
+    const layerMinZoom = layer.minzoom !== undefined ? layer.minzoom : MIN_ZOOM;
     const topPoints = [];
     const bottomPoints = [];
     let lastZoom;
@@ -282,9 +178,10 @@
     return path;
   }
 
-  function getDrawLayer(layer) {
-
-    const { color, strokeColor, strokeWidth } = getColor(layer);
+  const getDrawLayer = (layer) => {
+    const { color: layerColor, gradients: layerGradients } = getColor(layer, xScale);
+    const { color, strokeColor, strokeWidth } = layerColor;
+    gradients = gradients.concat(layerGradients);
     const path = getPath(layer);
 
     return {
@@ -294,14 +191,14 @@
       stroke: strokeColor,
       strokeWidth: strokeWidth,
     };
-  }
+  };
 
   $: if (style && style.layers) {
     const lineLayers = style.layers.filter(l => l.type === 'line');
-    height = lineLayers.length * 65;
+    chartHeight = lineLayers.length * 65;
 
-    xScale = d3.scaleLinear([minZoom, maxZoom], [margin.left, width - margin.right]);
-    yScale = d3.scaleBand(lineLayers.map(({ id }) => id), [margin.top, height - margin.bottom])
+    xScale = d3.scaleLinear([MIN_ZOOM, MAX_ZOOM], [margin.left, CHART_WIDTH - margin.right]);
+    yScale = d3.scaleBand(lineLayers.map(({ id }) => id), [margin.top, chartHeight - margin.bottom])
       .padding(0.25);
 
     // Adjust the yScale to account for layer width since D3 scaleBand spaces evenly
@@ -323,14 +220,14 @@
     }
 
     // Adjust the height to account for the increased offsets
-    height = height + yOffset;
+    chartHeight = chartHeight + yOffset;
 
     // Adjusted yScale function to use throughout
     adjustedYScale = (layerId) => yScaleObj[layerId];    
 
-    zoomLevels = d3.range(minZoom, maxZoom + 1, 1);
+    zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
 
-    layers = lineLayers.map(l => getDrawLayer(l));
+    layers = lineLayers.map(getDrawLayer);
 
 
     backgroundRect = backgroundSvgData.rect;
@@ -346,7 +243,7 @@
   function handleClick(layer) {
     tooltip = {
       text: JSON.stringify(layer.paint, null, 2),
-      left: xScale(maxZoom) + 10,
+      left: xScale(MAX_ZOOM) + 10,
       top: adjustedYScale(layer.id) + yScale.bandwidth()
     };
   }
@@ -354,7 +251,7 @@
 </script>
 
 <div class="fills-chart">
-  <svg id="lines" {width} {height}>
+  <svg id="lines" width={CHART_WIDTH} height={chartHeight}>
     <defs>
       {#each gradients as gradient}
         <linearGradient id={gradient.id}>
@@ -374,7 +271,7 @@
           x={backgroundRect.x}
           y={backgroundRect.y}
           width={backgroundRect.width}
-          height={height - margin.top - margin.bottom}
+          height={chartHeight - margin.top - margin.bottom}
           fill={backgroundRect.fill}
           stroke={backgroundRect.stroke}
           strokeWidth={backgroundRect.strokeWidth}
