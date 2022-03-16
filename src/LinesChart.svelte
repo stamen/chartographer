@@ -3,18 +3,13 @@
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
-  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH } from './constants';
+  import { gatherOutputs } from './gather-outputs';
+  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
   export let backgroundSvgData;
 
   let chartHeight;
-  const margin = {
-    bottom: 25,
-    left: 250,
-    right: 50,
-    top: 25
-  };
 
   let gradients = [];
   $: tooltip = {};
@@ -37,64 +32,6 @@
   let layers;
 
   let backgroundRect;
-
-  // Gathers outputs of expression for line width based on expression type
-  const gatherOutputs = exp => {
-    // Prevent unwanted mutations
-    const expression = JSON.parse(JSON.stringify(exp))
-    if (typeof expression === 'number') return [expression];
-    const outputs = [];
-    const expressionType = expression.hasOwnProperty('stops')
-      ? 'legacy'
-      : expression[0];
-
-    switch (expressionType) {
-      case 'case': {
-        let inputOutputs = expression.slice(1);
-        const fallback = inputOutputs.pop();
-        inputOutputs.forEach((val, i) => i % 2 !== 0 && outputs.push(val));
-        outputs.push(fallback);
-        break;
-      }
-      case 'match': {
-        let inputOutputs = expression.slice(2);
-        const fallback = inputOutputs.pop();
-        inputOutputs.forEach((val, i) => i % 2 !== 0 && outputs.push(val));
-        outputs.push(fallback);
-        break;
-      }
-      case 'interpolate': {
-        let inputOutputs = expression.slice(3);
-        inputOutputs.forEach((val, i) => i % 2 !== 0 && outputs.push(val));
-        break;
-      }
-      case 'step': {
-        let inputOutputs = expression.slice(2);
-        const fallback = inputOutputs.pop();
-        inputOutputs.forEach((val, i) => i % 2 === 0 && outputs.push(val));
-        outputs.push(fallback);
-        break;
-      }
-      case 'legacy': {
-        let inputOutputs = expression.stops;
-        inputOutputs.forEach(val => outputs.push(val[1]));
-        break;
-      }
-      default:
-        return expression;
-    }
-    if (outputs.some(item => Array.isArray(item))) {
-      return outputs.reduce((acc, item) => {
-        if (Array.isArray(item)) {
-          acc = acc.concat(gatherOutputs(item));
-        } else {
-          acc = acc.concat([item]);
-        }
-        return acc;
-      }, []);
-    }
-    return outputs;
-  };
 
   // Returns the largest width a line reaches within an expression
   function getFullLineWidth(layer) {
@@ -197,8 +134,8 @@
     const lineLayers = style.layers.filter(l => l.type === 'line');
     chartHeight = lineLayers.length * 65;
 
-    xScale = d3.scaleLinear([MIN_ZOOM, MAX_ZOOM], [margin.left, CHART_WIDTH - margin.right]);
-    yScale = d3.scaleBand(lineLayers.map(({ id }) => id), [margin.top, chartHeight - margin.bottom])
+    xScale = d3.scaleLinear([MIN_ZOOM, MAX_ZOOM], [MARGIN.left, CHART_WIDTH - MARGIN.right]);
+    yScale = d3.scaleBand(lineLayers.map(({ id }) => id), [MARGIN.top, chartHeight - MARGIN.bottom])
       .padding(0.25);
 
     // Adjust the yScale to account for layer width since D3 scaleBand spaces evenly
@@ -228,7 +165,6 @@
     zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
 
     layers = lineLayers.map(getDrawLayer);
-
 
     backgroundRect = backgroundSvgData.rect;
     if (backgroundSvgData.gradientDefs) {
@@ -271,7 +207,7 @@
           x={backgroundRect.x}
           y={backgroundRect.y}
           width={backgroundRect.width}
-          height={chartHeight - margin.top - margin.bottom}
+          height={chartHeight - MARGIN.top - MARGIN.bottom}
           fill={backgroundRect.fill}
           stroke={backgroundRect.stroke}
           strokeWidth={backgroundRect.strokeWidth}
@@ -289,7 +225,7 @@
       {/each}
     </g>
 
-    <g transform="translate(0, {margin.top + scrollY})" class="x-axis">
+    <g transform="translate(0, {MARGIN.top + scrollY})" class="x-axis">
       {#each zoomLevels as zoomLevel} 
         <g class="tick" opacity="1" transform="translate({xScale(zoomLevel)}, 0)">
           <text y="9">

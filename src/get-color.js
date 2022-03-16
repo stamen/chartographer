@@ -40,6 +40,10 @@ function getColor(layer, xScale) {
   let colorIsGradient = false;
   let opacityIsGradient = false;
 
+  if (Array.isArray(color) && color[0] !== 'interpolate') {
+    console.log(color);
+  }
+
   if (Array.isArray(color) && color[0] === 'interpolate') {
     const [, [interpolationType], [attribute]] = color;
 

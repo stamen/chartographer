@@ -3,18 +3,12 @@
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
-  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH } from './constants';
+  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
   export let updateBackgroundRect;
 
   let chartHeight;
-  const margin = {
-    bottom: 25,
-    left: 250,
-    right: 50,
-    top: 25
-  };
 
   let rects = [];
   let gradients = [];
@@ -38,8 +32,8 @@
     let layers = style.layers;
     chartHeight = layers.length * 65;
 
-    xScale = d3.scaleLinear([MIN_ZOOM, MAX_ZOOM], [margin.left, CHART_WIDTH - margin.right]);
-    yScale = d3.scaleBand(layers.map(({ id }) => id), [margin.top, chartHeight - margin.bottom])
+    xScale = d3.scaleLinear([MIN_ZOOM, MAX_ZOOM], [MARGIN.left, CHART_WIDTH - MARGIN.right]);
+    yScale = d3.scaleBand(layers.map(({ id }) => id), [MARGIN.top, chartHeight - MARGIN.bottom])
       .padding(0.25);
 
     zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
@@ -114,7 +108,7 @@
           x={rect.x}
           y={rect.y}
           width={rect.width}
-          height={rect.layer.type === 'background' ? chartHeight - margin.top - margin.bottom : rect.height}
+          height={rect.layer.type === 'background' ? chartHeight - MARGIN.top - MARGIN.bottom : rect.height}
           fill={rect.fill}
           stroke={rect.stroke}
           strokeWidth={rect.strokeWidth}
@@ -124,7 +118,7 @@
       {/each}
     </g>
 
-    <g transform="translate(0, {margin.top + scrollY})" class="x-axis">
+    <g transform="translate(0, {MARGIN.top + scrollY})" class="x-axis">
       {#each zoomLevels as zoomLevel} 
         <g class="tick" opacity="1" transform="translate({xScale(zoomLevel)}, 0)">
           <text y="9">
