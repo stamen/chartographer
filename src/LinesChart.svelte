@@ -51,40 +51,44 @@
     let strokeWidth = 0;
     switch (layer.type) {
       case 'fill': 
-        color = layer.paint['fill-color'];
-        opacity = layer.paint['fill-opacity'];
-        strokeColor = layer.paint['fill-outline-color'];
+        color = layer?.paint?.['fill-color'];
+        opacity = layer?.paint?.['fill-opacity'];
+        strokeColor = layer?.paint?.['fill-outline-color'];
         if (strokeColor) strokeWidth = 1;
         break;
       case 'background':
-        color = layer.paint['background-color'];
+        color = layer?.paint?.['background-color'];
         break;
       case 'line':
-        color = layer.paint['line-color'];
-        opacity = layer.paint['line-opacity'];
+        color = layer?.paint?.['line-color'];
+        opacity = layer?.paint?.['line-opacity'];
         break;
       case 'symbol':
-        color = layer.paint ? layer.paint['text-color'] : 'black';
-        opacity = layer.paint ? layer.paint['text-opacity'] : null;
+        color = layer?.paint?.['text-color'];
+        opacity = layer?.paint?.['text-opacity'];
         break;
       default: {}
     }
 
+    // Defaults
+    color = color || 'black';
+    opacity = opacity !== undefined ? opacity : 1;
+
     let colorIsGradient = false;
     let opacityIsGradient = false;
 
-    if (Array.isArray(color)) {
-      const [expressionType, [interpolationType], [attribute]] = color;
+    if (Array.isArray(color) && color[0] === 'interpolate') {
+      const [, [interpolationType], [attribute]] = color;
 
-      if (expressionType === 'interpolate' && interpolationType === 'linear' && attribute === 'zoom') {
+      if (interpolationType === 'linear' && attribute === 'zoom') {
         colorIsGradient = true;
       }
     }
 
-    if (Array.isArray(opacity)) {
-      const [expressionType, [interpolationType], [attribute]] = opacity;
+    if (Array.isArray(opacity) && opacity[0] === 'interpolate') {
+      const [, [interpolationType], [attribute]] = opacity;
 
-      if (expressionType === 'interpolate' && interpolationType === 'linear' && attribute === 'zoom') {
+      if (interpolationType === 'linear' && attribute === 'zoom') {
         opacityIsGradient = true;
       }
     }
@@ -92,7 +96,8 @@
     const gradientStops = [];
 
     if (colorIsGradient || opacityIsGradient) {
-      const opacityWithDefault = opacity || 1;
+      // This should have better handling elsewhere
+      opacity = Array.isArray(opacity) && opacity[0] === 'literal' ? opacity[1] : opacity;
       const gradientColorArray = colorIsGradient ? color.slice(3) : [];
       const gradientOpacityArray = opacityIsGradient ? opacity.slice(3) : [];
 
@@ -100,7 +105,7 @@
 
       stops.forEach(zoomStop => {
         const colorOutput = colorIsGradient ? getInterpolatedValue(color, zoomStop, null) : color;
-        let opacityOutput = opacityIsGradient ? getInterpolatedValue(opacityWithDefault, zoomStop, null) : opacityWithDefault;
+        let opacityOutput = opacityIsGradient ? getInterpolatedValue(opacity, zoomStop, null) : opacity;
         opacityOutput = parseFloat(opacityOutput.toFixed(2));
         gradientStops.push({
           offset: ((xScale(zoomStop) - lineStart) / lineLength) * 100,
@@ -124,6 +129,14 @@
       ];
 
       color = `url('#${layer.id}')`;
+    }
+
+    // Special handling for hidden layers
+    const isNotVisible = layer?.layout?.visibility === 'none';
+
+    if (isNotVisible) {
+      color = 'rgba(0, 0, 0, 0)';
+      strokeColor = 'rgba(0, 0, 0, 0)';
     }
 
     return { color, strokeColor, strokeWidth };
