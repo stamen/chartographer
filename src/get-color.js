@@ -1,71 +1,40 @@
 import { getValue as getInterpolatedValue } from './interpolation';
 import { MIN_ZOOM, MAX_ZOOM } from './constants';
 
-function getColor(layer, xScale) {
-  let gradients = [];
-  const lineStart = xScale(layer.minzoom || MIN_ZOOM);
-  const lineLength =
-    xScale(layer.maxzoom || MAX_ZOOM) - xScale(layer.minzoom || MIN_ZOOM);
-
-  let color;
-  let opacity;
-  let strokeColor;
-  let strokeWidth = 0;
-  switch (layer.type) {
-    case 'fill':
-      color = layer?.paint?.['fill-color'];
-      opacity = layer?.paint?.['fill-opacity'];
-      strokeColor = layer?.paint?.['fill-outline-color'];
-      if (strokeColor) strokeWidth = 1;
-      break;
-    case 'background':
-      color = layer?.paint?.['background-color'];
-      break;
-    case 'line':
-      color = layer?.paint?.['line-color'];
-      opacity = layer?.paint?.['line-opacity'];
-      break;
-    case 'symbol':
-      color = layer?.paint?.['text-color'];
-      opacity = layer?.paint?.['text-opacity'];
-      break;
-    default: {
-    }
+// Literal expressions are unnecessary but valid for opacity and color
+// so we remove them for things to run smoothly
+const handleLiteral = value => {
+  if (Array.isArray(value) && value[0] === 'literal') {
+    return value[1];
   }
-
-  // Defaults
-  color = color || 'black';
-  opacity = opacity !== undefined ? opacity : 1;
-
-  let colorIsGradient = false;
-  let opacityIsGradient = false;
-
-  if (Array.isArray(color) && color[0] !== 'interpolate') {
-    console.log(color);
+  if (Array.isArray(value)) {
+    return value.map(handleLiteral);
   }
+  return value;
+};
 
-  if (Array.isArray(color) && color[0] === 'interpolate') {
-    const [, [interpolationType], [attribute]] = color;
+const isGradient = value => {
+  if (Array.isArray(value) && value[0] === 'interpolate') {
+    const [, [interpolationType], [attribute]] = value;
 
     if (interpolationType === 'linear' && attribute === 'zoom') {
-      colorIsGradient = true;
+      return true;
     }
   }
+  return false;
+};
 
-  if (Array.isArray(opacity) && opacity[0] === 'interpolate') {
-    const [, [interpolationType], [attribute]] = opacity;
-
-    if (interpolationType === 'linear' && attribute === 'zoom') {
-      opacityIsGradient = true;
-    }
-  }
+const getGradientStops = ({ color, opacity, minZoom, maxZoom, xScale }) => {
+  const colorIsGradient = isGradient(color);
+  const opacityIsGradient = isGradient(opacity);
 
   const gradientStops = [];
 
   if (colorIsGradient || opacityIsGradient) {
-    // This should have better handling elsewhere
-    opacity =
-      Array.isArray(opacity) && opacity[0] === 'literal' ? opacity[1] : opacity;
+    const lineStart = xScale(minZoom);
+    const lineLength = xScale(maxZoom) - xScale(minZoom);
+
+    opacity = opacity;
     const gradientColorArray = colorIsGradient ? color.slice(3) : [];
     const gradientOpacityArray = opacityIsGradient ? opacity.slice(3) : [];
 
@@ -90,6 +59,66 @@ function getColor(layer, xScale) {
     });
   }
 
+  return gradientStops;
+};
+
+const getColor = (layer, xScale) => {
+  let gradients = [];
+  const minZoom = layer.minzoom || MIN_ZOOM;
+  const maxZoom = layer.maxzoom || MAX_ZOOM;
+
+  let color;
+  let opacity;
+  let strokeColor;
+  let strokeWidth = 0;
+
+  // Return early for hidden layers
+  const isNotVisible = layer?.layout?.visibility === 'none';
+  if (isNotVisible) {
+    return {
+      gradients,
+      color: {
+        color: 'rgba(0, 0, 0, 0)',
+        strokeColor: 'rgba(0, 0, 0, 0)',
+        strokeWidth
+      }
+    };
+  }
+
+  switch (layer.type) {
+    case 'fill':
+      color = layer?.paint?.['fill-color'];
+      opacity = layer?.paint?.['fill-opacity'];
+      strokeColor = layer?.paint?.['fill-outline-color'];
+      if (strokeColor) strokeWidth = 1;
+      break;
+    case 'background':
+      color = layer?.paint?.['background-color'];
+      break;
+    case 'line':
+      color = layer?.paint?.['line-color'];
+      opacity = layer?.paint?.['line-opacity'];
+      break;
+    case 'symbol':
+      color = layer?.paint?.['text-color'];
+      opacity = layer?.paint?.['text-opacity'];
+      break;
+    default: {
+    }
+  }
+
+  // Defaults
+  color = handleLiteral(color) || 'black';
+  opacity = opacity !== undefined ? handleLiteral(opacity) : 1;
+
+  const gradientStops = getGradientStops({
+    color,
+    opacity,
+    minZoom,
+    maxZoom,
+    xScale
+  });
+
   if (gradientStops.length > 1) {
     gradients = [
       {
@@ -105,15 +134,7 @@ function getColor(layer, xScale) {
     color = `url('#${layer.id}')`;
   }
 
-  // Special handling for hidden layers
-  const isNotVisible = layer?.layout?.visibility === 'none';
-
-  if (isNotVisible) {
-    color = 'rgba(0, 0, 0, 0)';
-    strokeColor = 'rgba(0, 0, 0, 0)';
-  }
-
   return { gradients, color: { color, strokeColor, strokeWidth } };
-}
+};
 
 export { getColor };
