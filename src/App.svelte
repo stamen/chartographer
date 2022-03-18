@@ -1,5 +1,6 @@
 <script>
   import * as d3 from 'd3';
+  import { migrate } from '@mapbox/mapbox-gl-style-spec';
   import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte'
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons'
@@ -63,7 +64,7 @@
     e.preventDefault();  
     const { files } = e.dataTransfer;
     const text = await files[0].text();
-    style = JSON.parse(text);
+    style = migrate(JSON.parse(text));
      // On dropping in a style, switch to the fill tab to refresh background layer state
      handleTabChange({ detail: { tab: 'fill' } });
   }

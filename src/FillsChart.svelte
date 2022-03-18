@@ -2,21 +2,13 @@
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
-  import { getValue as getInterpolatedValue } from './interpolation';
+  import { getColor } from './get-color';
+  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
-  export let minZoom = 0;
-  export let maxZoom = 24;
   export let updateBackgroundRect;
 
-  const width = 1000;
-  let height;
-  const margin = {
-    bottom: 25,
-    left: 250,
-    right: 50,
-    top: 25
-  };
+  let chartHeight;
 
   let rects = [];
   let gradients = [];
@@ -38,114 +30,36 @@
 
   $: if (style && style.layers) {
     let layers = style.layers;
-    height = layers.length * 65;
+    chartHeight = layers.length * 65;
 
-    xScale = d3.scaleLinear([minZoom, maxZoom], [margin.left, width - margin.right]);
-    yScale = d3.scaleBand(layers.map(({ id }) => id), [margin.top, height - margin.bottom])
+    xScale = d3.scaleLinear([MIN_ZOOM, MAX_ZOOM], [MARGIN.left, CHART_WIDTH - MARGIN.right]);
+    yScale = d3.scaleBand(layers.map(({ id }) => id), [MARGIN.top, chartHeight - MARGIN.bottom])
       .padding(0.25);
 
-    zoomLevels = d3.range(minZoom, maxZoom + 1, 1);
+    zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
 
-    layers = layers.map(l => {
-      const rectStart = xScale(l.minzoom || minZoom);
-      const rectWidth = xScale(l.maxzoom || maxZoom) - rectStart;
-
-      let color;
-      let opacity;
-      let strokeColor;
-      let strokeWidth = 0;
-      switch (l.type) {
-        case 'fill': 
-          color = l.paint['fill-color'];
-          opacity = l.paint['fill-opacity'];
-          strokeColor = l.paint['fill-outline-color'];
-          if (strokeColor) strokeWidth = 1;
-          break;
-        case 'background':
-          color = l.paint['background-color'];
-          break;
-        case 'line':
-          color = l.paint['line-color'];
-          opacity = l.paint['line-opacity'];
-          break;
-        case 'symbol':
-          color = l.paint ? l.paint['text-color'] : 'black';
-          opacity = l.paint ? l.paint['text-opacity'] : null;
-          break;
-        default: {}
-      }
-
-      let colorIsGradient = false;
-      let opacityIsGradient = false;
-
-      if (Array.isArray(color)) {
-        const [expressionType, [interpolationType], [attribute]] = color;
-
-        if (expressionType === 'interpolate' && interpolationType === 'linear' && attribute === 'zoom') {
-          colorIsGradient = true;
-        }
-      }
-
-      if (Array.isArray(opacity)) {
-        const [expressionType, [interpolationType], [attribute]] = opacity;
-
-        if (expressionType === 'interpolate' && interpolationType === 'linear' && attribute === 'zoom') {
-          opacityIsGradient = true;
-        }
-      }
-
-      const gradientStops = [];
-
-      if (colorIsGradient || opacityIsGradient) {
-        const opacityWithDefault = opacity || 1;
-        const gradientColorArray = colorIsGradient ? color.slice(3) : [];
-        const gradientOpacityArray = opacityIsGradient ? opacity.slice(3) : [];
-
-        const stops = gradientColorArray.concat(gradientOpacityArray).filter((v,i) => i % 2 === 0).sort((a, b) => a - b);
-
-        stops.forEach(zoomStop => {
-          const colorOutput = colorIsGradient ? getInterpolatedValue(color, zoomStop, null) : color;
-          let opacityOutput = opacityIsGradient ? getInterpolatedValue(opacityWithDefault, zoomStop, null) : opacityWithDefault;
-          opacityOutput = parseFloat(opacityOutput.toFixed(2));
-          gradientStops.push({
-            offset: ((xScale(zoomStop) - rectStart) / rectWidth) * 100,
-            stopColor: colorOutput,
-            stopOpacity: opacityOutput
-          });
-        })
-      }
-
-      if (gradientStops.length > 1) {
-        gradients = [
-          ...gradients,
-          {
-            id: l.id,
-            stops: gradientStops.map(stop => ({
-              offset: `${stop.offset}%`,
-              stopColor: stop.stopColor,
-              stopOpacity: stop.stopOpacity,
-            }))
-          }
-        ];
-
-        color = `url('#${l.id}')`;
-      }
+    const getDrawLayer = (layer) => {
+      const { color: layerColor, gradients: layerGradients } = getColor(layer, xScale);
+      const { color, strokeColor, strokeWidth } = layerColor;
+      gradients = gradients.concat(layerGradients);
 
       return {
-        ...l,
+        ...layer,
         fill: color,
         stroke: strokeColor,
         strokeWidth: strokeWidth,
       };
-    });
+    };
+
+    layers = layers.map(getDrawLayer)
 
     // TODO consider combining casing with roads
     rects = layers.map(d => {
       return {
-        x: xScale(d.minzoom || minZoom),
+        x: xScale(d.minzoom || MIN_ZOOM),
         y: yScale(d.id),
         height: yScale.bandwidth(),
-        width: xScale(d.maxzoom || maxZoom) - xScale(d.minzoom || minZoom),
+        width: xScale(d.maxzoom || MAX_ZOOM) - xScale(d.minzoom || MIN_ZOOM),
         fill: d.fill,
         stroke: d.stroke,
         strokeWidth: d.strokeWidth,
@@ -167,14 +81,14 @@
   function handleClick(layer) {
     tooltip = {
       text: JSON.stringify(layer.paint, null, 2),
-      left: xScale(maxZoom) + 10,
+      left: xScale(MAX_ZOOM) + 10,
       top: yScale(layer.id) + yScale.bandwidth()
     };
   }
 </script>
 
 <div class="fills-chart">
-  <svg id="fill" {width} {height}>
+  <svg id="fill" width={CHART_WIDTH} height={chartHeight}>
     <defs>
       {#each gradients as gradient}
         <linearGradient id={gradient.id}>
@@ -194,7 +108,7 @@
           x={rect.x}
           y={rect.y}
           width={rect.width}
-          height={rect.layer.type === 'background' ? height - margin.top - margin.bottom : rect.height}
+          height={rect.layer.type === 'background' ? chartHeight - MARGIN.top - MARGIN.bottom : rect.height}
           fill={rect.fill}
           stroke={rect.stroke}
           strokeWidth={rect.strokeWidth}
@@ -204,7 +118,7 @@
       {/each}
     </g>
 
-    <g transform="translate(0, {margin.top + scrollY})" class="x-axis">
+    <g transform="translate(0, {MARGIN.top + scrollY})" class="x-axis">
       {#each zoomLevels as zoomLevel} 
         <g class="tick" opacity="1" transform="translate({xScale(zoomLevel)}, 0)">
           <text y="9">
