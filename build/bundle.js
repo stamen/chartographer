@@ -35042,9 +35042,6 @@ var app = (function () {
           let opacityOutput = opacityIsGradient
             ? getValue(opacity, zoomStop, null)
             : opacity;
-
-          // TODO need conditional handling
-          if (Array.isArray(opacityOutput) || Array.isArray(colorOutput)) return;
           opacityOutput = parseFloat(opacityOutput.toFixed(2));
           gradientStops.push({
             offset: ((xScale(zoomStop) - lineStart) / lineLength) * 100,
@@ -35130,183 +35127,9 @@ var app = (function () {
       return { gradients, color: { color, strokeColor, strokeWidth } };
     };
 
-    const getExpandableProperties = layer => {
-      return ['paint', 'layout']
-        .map(type => {
-          if (!layer[type]) return [];
-          return Object.entries(layer[type])
-    	.map(([key, value]) => {
-    	  if (value[0] === 'case') return { type, key, value };
-    	  if (value[0] === 'match') return { type, key, value };
-    	})
-    	.filter(v => v);
-        })
-        .filter(v => v.length)
-        .reduce((agg, current) => agg.concat(current), []);
-    };
-
-
-    /**
-     * Expand a case expression to all the possible values the case could output
-     *
-     * @param {string} type - 'layout' or 'paint'
-     * @param {string} key - the property name
-     * @param {Array} expression - the expression
-     * @returns {Array} the expanded values
-     */
-    const expandCaseExpression = (type, key, expression) => {
-      const [expressionType, ...cases] = expression;
-      let expandedValues = [];
-
-      for (let i = 0; i < cases.length; i += 2) {
-        let descriptor = JSON.stringify(cases[i]);
-        let output = cases[i + 1];
-        if (i === cases.length - 1) {
-          descriptor = 'fallback';
-          output = cases[i];
-        }
-        expandedValues.push({
-          descriptor,
-          expandedValue: output,
-          condition: {
-    	conditionType: 'case',
-    	type,
-    	key,
-    	value: descriptor
-          }
-        });
-      }
-      return expandedValues;
-    };
-
-
-    /**
-     * Expand a match expression to all the possible values the match could output
-     *
-     * @param {string} layer - the layer the expression is part of
-     * @param {string} type - 'layout' or 'paint'
-     * @param {string} key - the property name
-     * @param {string} expression - the expression
-     * @returns {Array} the expanded values
-     */
-    const expandMatchExpression = (layer, type, key, expression) => {
-      const [expressionType, input, ...matches] = expression;
-      let expandedValues = [];
-
-      for (let i = 0; i < matches.length; i += 2) {
-        let matchSeekValue = matches[i];
-        let output = matches[i + 1];
-
-        let descriptor = [
-          JSON.stringify(input),
-          JSON.stringify(matchSeekValue),
-        ].join('==');
-
-        if (i === matches.length - 1) {
-          descriptor = matchSeekValue = 'fallback';
-          output = matches[i];
-        }
-
-        // Look at layer metadata to see if matches traversed thus far are
-        // mutually exclusive to this candidate layer. If so, don't add this
-        // layer.
-        const existingMatches = layer?.metadata?.conditions ?? [];
-        const existingMatchesAreMutuallyExclusive = existingMatches.some(otherMatch => {
-          if (JSON.stringify(input) !== JSON.stringify(otherMatch.input)) return false;
-          if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
-    	return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
-          }
-          return matchSeekValue !== otherMatch.value;
-        });
-
-        if (existingMatchesAreMutuallyExclusive) continue;
-
-        expandedValues.push({
-          descriptor,
-          expandedValue: output,
-          condition: {
-    	conditionType: 'match',
-    	type,
-    	key,
-    	input,
-    	value: matchSeekValue
-          }
-        });
-      }
-
-      return expandedValues;
-    };
-
-    /**
-     * Expand a layer based on case and match expressions.
-     *
-     * The hope here is to get a series of valid layers for styling, where we
-     * account for case and match expressions. For example, if a layer has a case
-     * expression with two cases and a fallback, that layer will be expanded to
-     * three separate layers, where each has the specific value for the case or
-     * fallback that is relevant to it.
-     */
-    const expandLayer = layer => {
-      let expandedValues = [];
-
-      const expandableProperties = getExpandableProperties(layer);
-      if (expandableProperties.length === 0) return [layer];
-
-      const { type, key, value } = expandableProperties[0];
-
-      switch (value[0]) {
-        case 'case':
-          expandedValues = expandCaseExpression(type, key, value);
-          break;
-        case 'match':
-          expandedValues = expandMatchExpression(layer, type, key, value);
-          break;
-      }
-
-      if (expandedValues.length > 0) {
-        // For each value to expand, create a new layer with that value, then
-        // recurse to further expand the layer, if necessary
-        return expandedValues
-          .map(({ descriptor, expandedValue, condition }) => {
-    	let combinedDescriptor = descriptor;
-    	if (layer?.metadata?.descriptor) {
-    	  combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
-    	}
-
-    	let conditions = [...layer?.metadata?.conditions ?? []];
-    	if (condition) conditions.push(condition);
-
-    	const newLayer = {
-    	  ...layer,
-    	  id: `${layer.id}-${descriptor}`,
-    	  metadata: {
-    	    parentId: layer?.metadata?.parentId ?? layer.id,
-    	    descriptor: combinedDescriptor,
-    	    conditions
-    	  },
-    	  [type]: {
-    	    ...layer[type],
-    	    [key]: expandedValue
-    	  }
-    	};
-
-    	return expandLayer(newLayer);
-          })
-          .reduce((agg, current) => agg.concat(current), []);
-      }
-
-      return [layer];
-
-    };
-
-    const expandLayers = layers => {
-      return layers.map(expandLayer)
-        .reduce((agg, current) => agg.concat(current), []);
-    };
-
     /* src/FillsChart.svelte generated by Svelte v3.44.2 */
 
-    const { Object: Object_1$2, console: console_1$1 } = globals;
+    const { Object: Object_1$2 } = globals;
     const file$4 = "src/FillsChart.svelte";
 
     function get_each_context$1(ctx, list, i) {
@@ -35339,7 +35162,7 @@ var app = (function () {
     	return child_ctx;
     }
 
-    // (100:10) {#each gradient.stops as stop}
+    // (95:10) {#each gradient.stops as stop}
     function create_each_block_4$1(ctx) {
     	let stop;
     	let stop_offset_value;
@@ -35352,7 +35175,7 @@ var app = (function () {
     			attr_dev(stop, "offset", stop_offset_value = /*stop*/ ctx[24].offset);
     			attr_dev(stop, "stop-color", stop_stop_color_value = /*stop*/ ctx[24].stopColor);
     			attr_dev(stop, "stop-opacity", stop_stop_opacity_value = /*stop*/ ctx[24].stopOpacity);
-    			add_location(stop, file$4, 100, 12, 2714);
+    			add_location(stop, file$4, 95, 12, 2572);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, stop, anchor);
@@ -35379,14 +35202,14 @@ var app = (function () {
     		block,
     		id: create_each_block_4$1.name,
     		type: "each",
-    		source: "(100:10) {#each gradient.stops as stop}",
+    		source: "(95:10) {#each gradient.stops as stop}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (98:6) {#each gradients as gradient}
+    // (93:6) {#each gradients as gradient}
     function create_each_block_3$1(ctx) {
     	let linearGradient;
     	let linearGradient_id_value;
@@ -35407,7 +35230,7 @@ var app = (function () {
     			}
 
     			attr_dev(linearGradient, "id", linearGradient_id_value = /*gradient*/ ctx[21].id);
-    			add_location(linearGradient, file$4, 98, 8, 2627);
+    			add_location(linearGradient, file$4, 93, 8, 2485);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, linearGradient, anchor);
@@ -35455,14 +35278,14 @@ var app = (function () {
     		block,
     		id: create_each_block_3$1.name,
     		type: "each",
-    		source: "(98:6) {#each gradients as gradient}",
+    		source: "(93:6) {#each gradients as gradient}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (111:6) {#each rects as rect}
+    // (106:6) {#each rects as rect}
     function create_each_block_2$1(ctx) {
     	let rect;
     	let rect_x_value;
@@ -35494,7 +35317,7 @@ var app = (function () {
     			attr_dev(rect, "stroke", rect_stroke_value = /*rect*/ ctx[13].stroke);
     			attr_dev(rect, "strokewidth", rect_strokewidth_value = /*rect*/ ctx[13].strokeWidth);
     			attr_dev(rect, "rx", "20");
-    			add_location(rect, file$4, 111, 8, 2972);
+    			add_location(rect, file$4, 106, 8, 2830);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, rect, anchor);
@@ -35548,14 +35371,14 @@ var app = (function () {
     		block,
     		id: create_each_block_2$1.name,
     		type: "each",
-    		source: "(111:6) {#each rects as rect}",
+    		source: "(106:6) {#each rects as rect}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (127:6) {#each zoomLevels as zoomLevel}
+    // (122:6) {#each zoomLevels as zoomLevel}
     function create_each_block_1$1(ctx) {
     	let g;
     	let text_1;
@@ -35570,11 +35393,11 @@ var app = (function () {
     			t = text$1(t_value);
     			attr_dev(text_1, "y", "9");
     			attr_dev(text_1, "class", "svelte-rpuqmp");
-    			add_location(text_1, file$4, 128, 10, 3565);
+    			add_location(text_1, file$4, 123, 10, 3423);
     			attr_dev(g, "class", "tick");
     			attr_dev(g, "opacity", "1");
     			attr_dev(g, "transform", g_transform_value = "translate(" + /*xScale*/ ctx[3](/*zoomLevel*/ ctx[16]) + ", 0)");
-    			add_location(g, file$4, 127, 8, 3480);
+    			add_location(g, file$4, 122, 8, 3338);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, g, anchor);
@@ -35597,14 +35420,14 @@ var app = (function () {
     		block,
     		id: create_each_block_1$1.name,
     		type: "each",
-    		source: "(127:6) {#each zoomLevels as zoomLevel}",
+    		source: "(122:6) {#each zoomLevels as zoomLevel}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (137:6) {#each rects as rect}
+    // (132:6) {#each rects as rect}
     function create_each_block$1(ctx) {
     	let g;
     	let text_1;
@@ -35619,11 +35442,11 @@ var app = (function () {
     			t = text$1(t_value);
     			attr_dev(text_1, "y", "9");
     			attr_dev(text_1, "class", "svelte-rpuqmp");
-    			add_location(text_1, file$4, 139, 10, 3869);
+    			add_location(text_1, file$4, 134, 10, 3727);
     			attr_dev(g, "class", "tick");
     			attr_dev(g, "opacity", "1");
     			attr_dev(g, "transform", g_transform_value = "translate(0,\n          " + (/*yScale*/ ctx[4](/*rect*/ ctx[13].layer.id) + /*yScale*/ ctx[4].bandwidth() / 2) + ")");
-    			add_location(g, file$4, 137, 8, 3745);
+    			add_location(g, file$4, 132, 8, 3603);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, g, anchor);
@@ -35646,14 +35469,14 @@ var app = (function () {
     		block,
     		id: create_each_block$1.name,
     		type: "each",
-    		source: "(137:6) {#each rects as rect}",
+    		source: "(132:6) {#each rects as rect}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (148:2) {#if Object.keys(tooltip).length > 0}
+    // (143:2) {#if Object.keys(tooltip).length > 0}
     function create_if_block$4(ctx) {
     	let tooltip_1;
     	let current;
@@ -35707,14 +35530,14 @@ var app = (function () {
     		block,
     		id: create_if_block$4.name,
     		type: "if",
-    		source: "(148:2) {#if Object.keys(tooltip).length > 0}",
+    		source: "(143:2) {#if Object.keys(tooltip).length > 0}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (149:4) <Tooltip       left={tooltip.left}       top={tooltip.top}       on:close={handleTooltipClose}     >
+    // (144:4) <Tooltip       left={tooltip.left}       top={tooltip.top}       on:close={handleTooltipClose}     >
     function create_default_slot$2(ctx) {
     	let t_value = (/*tooltip*/ ctx[7].text || '') + "";
     	let t;
@@ -35738,7 +35561,7 @@ var app = (function () {
     		block,
     		id: create_default_slot$2.name,
     		type: "slot",
-    		source: "(149:4) <Tooltip       left={tooltip.left}       top={tooltip.top}       on:close={handleTooltipClose}     >",
+    		source: "(144:4) <Tooltip       left={tooltip.left}       top={tooltip.top}       on:close={handleTooltipClose}     >",
     		ctx
     	});
 
@@ -35820,20 +35643,20 @@ var app = (function () {
 
     			t = space();
     			if (if_block) if_block.c();
-    			add_location(defs, file$4, 96, 4, 2576);
-    			add_location(g0, file$4, 109, 4, 2932);
+    			add_location(defs, file$4, 91, 4, 2434);
+    			add_location(g0, file$4, 104, 4, 2790);
     			attr_dev(g1, "transform", g1_transform_value = "translate(0, " + (MARGIN.top + /*scrollY*/ ctx[5]) + ")");
     			attr_dev(g1, "class", "x-axis svelte-rpuqmp");
-    			add_location(g1, file$4, 125, 4, 3365);
+    			add_location(g1, file$4, 120, 4, 3223);
     			attr_dev(g2, "transform", "translate(0, 0)");
     			attr_dev(g2, "class", "y-axis svelte-rpuqmp");
-    			add_location(g2, file$4, 135, 4, 3661);
+    			add_location(g2, file$4, 130, 4, 3519);
     			attr_dev(svg, "id", "fill");
     			attr_dev(svg, "width", CHART_WIDTH);
     			attr_dev(svg, "height", /*chartHeight*/ ctx[0]);
-    			add_location(svg, file$4, 95, 2, 2515);
+    			add_location(svg, file$4, 90, 2, 2373);
     			attr_dev(div, "class", "fills-chart");
-    			add_location(div, file$4, 94, 0, 2487);
+    			add_location(div, file$4, 89, 0, 2345);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -36059,7 +35882,7 @@ var app = (function () {
     	const writable_props = ['style', 'updateBackgroundRect'];
 
     	Object_1$2.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console_1$1.warn(`<FillsChart> was created with unknown prop '${key}'`);
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== '$$' && key !== 'slot') console.warn(`<FillsChart> was created with unknown prop '${key}'`);
     	});
 
     	const click_handler = rect => handleClick(rect.layer);
@@ -36074,7 +35897,6 @@ var app = (function () {
     		onMount,
     		Tooltip,
     		getColor,
-    		expandLayers,
     		MIN_ZOOM,
     		MAX_ZOOM,
     		CHART_WIDTH,
@@ -36138,8 +35960,6 @@ var app = (function () {
     					};
     				};
 
-    				layers = expandLayers(layers);
-    				console.log(JSON.stringify(layers, null, 2));
     				layers = layers.map(getDrawLayer);
 
     				// TODO consider combining casing with roads
@@ -36201,11 +36021,11 @@ var app = (function () {
     		const props = options.props || {};
 
     		if (/*style*/ ctx[10] === undefined && !('style' in props)) {
-    			console_1$1.warn("<FillsChart> was created without expected prop 'style'");
+    			console.warn("<FillsChart> was created without expected prop 'style'");
     		}
 
     		if (/*updateBackgroundRect*/ ctx[11] === undefined && !('updateBackgroundRect' in props)) {
-    			console_1$1.warn("<FillsChart> was created without expected prop 'updateBackgroundRect'");
+    			console.warn("<FillsChart> was created without expected prop 'updateBackgroundRect'");
     		}
     	}
 
@@ -37459,6 +37279,180 @@ var app = (function () {
     })));
 
     });
+
+    const getExpandableProperties = layer => {
+      return ['paint', 'layout']
+        .map(type => {
+          if (!layer[type]) return [];
+          return Object.entries(layer[type])
+    	.map(([key, value]) => {
+    	  if (value[0] === 'case') return { type, key, value };
+    	  if (value[0] === 'match') return { type, key, value };
+    	})
+    	.filter(v => v);
+        })
+        .filter(v => v.length)
+        .reduce((agg, current) => agg.concat(current), []);
+    };
+
+
+    /**
+     * Expand a case expression to all the possible values the case could output
+     *
+     * @param {string} type - 'layout' or 'paint'
+     * @param {string} key - the property name
+     * @param {Array} expression - the expression
+     * @returns {Array} the expanded values
+     */
+    const expandCaseExpression = (type, key, expression) => {
+      const [expressionType, ...cases] = expression;
+      let expandedValues = [];
+
+      for (let i = 0; i < cases.length; i += 2) {
+        let descriptor = JSON.stringify(cases[i]);
+        let output = cases[i + 1];
+        if (i === cases.length - 1) {
+          descriptor = 'fallback';
+          output = cases[i];
+        }
+        expandedValues.push({
+          descriptor,
+          expandedValue: output,
+          condition: {
+    	conditionType: 'case',
+    	type,
+    	key,
+    	value: descriptor
+          }
+        });
+      }
+      return expandedValues;
+    };
+
+
+    /**
+     * Expand a match expression to all the possible values the match could output
+     *
+     * @param {string} layer - the layer the expression is part of
+     * @param {string} type - 'layout' or 'paint'
+     * @param {string} key - the property name
+     * @param {string} expression - the expression
+     * @returns {Array} the expanded values
+     */
+    const expandMatchExpression = (layer, type, key, expression) => {
+      const [expressionType, input, ...matches] = expression;
+      let expandedValues = [];
+
+      for (let i = 0; i < matches.length; i += 2) {
+        let matchSeekValue = matches[i];
+        let output = matches[i + 1];
+
+        let descriptor = [
+          JSON.stringify(input),
+          JSON.stringify(matchSeekValue),
+        ].join('==');
+
+        if (i === matches.length - 1) {
+          descriptor = matchSeekValue = 'fallback';
+          output = matches[i];
+        }
+
+        // Look at layer metadata to see if matches traversed thus far are
+        // mutually exclusive to this candidate layer. If so, don't add this
+        // layer.
+        const existingMatches = layer?.metadata?.conditions ?? [];
+        const existingMatchesAreMutuallyExclusive = existingMatches.some(otherMatch => {
+          if (JSON.stringify(input) !== JSON.stringify(otherMatch.input)) return false;
+          if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
+    	return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+          }
+          return matchSeekValue !== otherMatch.value;
+        });
+
+        if (existingMatchesAreMutuallyExclusive) continue;
+
+        expandedValues.push({
+          descriptor,
+          expandedValue: output,
+          condition: {
+    	conditionType: 'match',
+    	type,
+    	key,
+    	input,
+    	value: matchSeekValue
+          }
+        });
+      }
+
+      return expandedValues;
+    };
+
+    /**
+     * Expand a layer based on case and match expressions.
+     *
+     * The hope here is to get a series of valid layers for styling, where we
+     * account for case and match expressions. For example, if a layer has a case
+     * expression with two cases and a fallback, that layer will be expanded to
+     * three separate layers, where each has the specific value for the case or
+     * fallback that is relevant to it.
+     */
+    const expandLayer = layer => {
+      let expandedValues = [];
+
+      const expandableProperties = getExpandableProperties(layer);
+      if (expandableProperties.length === 0) return [layer];
+
+      const { type, key, value } = expandableProperties[0];
+
+      switch (value[0]) {
+        case 'case':
+          expandedValues = expandCaseExpression(type, key, value);
+          break;
+        case 'match':
+          expandedValues = expandMatchExpression(layer, type, key, value);
+          break;
+      }
+
+      if (expandedValues.length > 0) {
+        // For each value to expand, create a new layer with that value, then
+        // recurse to further expand the layer, if necessary
+        return expandedValues
+          .map(({ descriptor, expandedValue, condition }) => {
+    	let combinedDescriptor = descriptor;
+    	if (layer?.metadata?.descriptor) {
+    	  combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
+    	}
+
+    	let conditions = [...layer?.metadata?.conditions ?? []];
+    	if (condition) conditions.push(condition);
+
+    	const newLayer = {
+    	  ...layer,
+    	  id: `${layer.id}-${descriptor}`,
+    	  metadata: {
+    	    parentId: layer?.metadata?.parentId ?? layer.id,
+    	    descriptor: combinedDescriptor,
+    	    conditions
+    	  },
+    	  [type]: {
+    	    ...layer[type],
+    	    [key]: expandedValue
+    	  }
+    	};
+
+    	return expandLayer(newLayer);
+          })
+          .reduce((agg, current) => agg.concat(current), []);
+      }
+
+      return [layer];
+
+    };
+
+    const expandLayers = layers => {
+      return layers.map(expandLayer)
+        .reduce((agg, current) => agg.concat(current), []);
+    };
 
     /* src/TypographyChart.svelte generated by Svelte v3.44.2 */
 
