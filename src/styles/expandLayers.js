@@ -6,6 +6,12 @@ const getExpandableProperties = layer => {
         .map(([key, value]) => {
           if (value[0] === 'case') return { type, key, value };
           if (value[0] === 'match') return { type, key, value };
+          if (
+            (value[0] === 'interpolate' || value[0] === 'step') &&
+            value.flat(Infinity).some(v => v === 'match' || v === 'case')
+          ) {
+            return { type, key, value };
+          }
         })
         .filter(v => v);
     })
@@ -106,6 +112,102 @@ const expandMatchExpression = (layer, type, key, expression) => {
   return expandedValues;
 };
 
+// -----------------------------------------------------------------------------------------------------------------------
+
+const expandInterpolateCondtionals = (layer, type, key, value) => {
+  const [interpolationType] = value;
+
+  let inputOutputs = [];
+  let zooms = [];
+  let outputs = [];
+
+  // Pull out outputs and zooms from interpolation
+  switch (interpolationType) {
+    case 'interpolate':
+    case 'interpolate-hcl':
+    case 'interpolate-lab': {
+      inputOutputs = value.slice(3);
+      inputOutputs.forEach((val, i) =>
+        i % 2 !== 0 ? outputs.push(val) : zooms.push(val)
+      );
+      break;
+    }
+    case 'step': {
+      inputOutputs = value.slice(2);
+      const fallback = inputOutputs.pop();
+      zooms.push(0);
+      inputOutputs.forEach((val, i) =>
+        i % 2 === 0 ? outputs.push(val) : zooms.push(val)
+      );
+      outputs.push(fallback);
+      break;
+    }
+  }
+
+  let dataPropertyValues = new Set();
+  let expandedOutputs = [];
+
+  // Expand individual outputs into expanded values and add zoom
+  for (let i = 0; i < outputs.length; i++) {
+    const val = outputs[i];
+    const zoom = zooms[i];
+    const fakeLayer = {
+      ...layer,
+      id: `${layer.id}-${zooms[i]}`,
+      [type]: {
+        ...layer[type],
+        [key]: val
+      }
+    };
+    let nextValues =
+      val[0] === 'match'
+        ? expandMatchExpression(fakeLayer, type, key, val)
+        : expandCaseExpression(type, key, val);
+    nextValues = nextValues.map(v => ({ ...v, zoom }));
+    expandedOutputs = expandedOutputs.concat(nextValues);
+    nextValues.forEach(val => dataPropertyValues.add(val.condition.value));
+  }
+
+  // For each data property value referenced, create interpolation across all zooms
+  const expandedInterpolateValues = [...dataPropertyValues].reduce((acc, v) => {
+    // Outputs filtered to those relevant by property
+    const filteredOutputs = expandedOutputs.filter(
+      output => output.condition.value === v
+    );
+
+    // Build interpolation expression
+    let exp =
+      interpolationType === 'step'
+        ? [interpolationType]
+        : [interpolationType, ['linear']];
+
+    exp.push(['zoom']);
+
+    for (let i = 0; i < zooms.length; i++) {
+      const output =
+        filteredOutputs[i] || filteredOutputs[filteredOutputs.length - 1];
+      const zoom = zooms[i];
+      const isFirstStep = output.zoom === 0 && interpolationType === 'step';
+      if (!isFirstStep) {
+        exp.push(zoom);
+      }
+      exp.push(output.expandedValue);
+    }
+
+    // Grab the first expanded value data structure which should be the same except for value we're replacing
+    let nextExpandedValue = filteredOutputs[0];
+    nextExpandedValue.expandedValue = exp;
+    delete nextExpandedValue.zoom;
+
+    acc.push(nextExpandedValue);
+    return acc;
+  }, []);
+
+  return expandedInterpolateValues;
+};
+
+// -----------------------------------------------------------------------------------------------------------------------
+
 /**
  * Expand a layer based on case and match expressions.
  *
@@ -129,6 +231,10 @@ const expandLayer = layer => {
       break;
     case 'match':
       expandedValues = expandMatchExpression(layer, type, key, value);
+      break;
+    case 'interpolate':
+    case 'step':
+      expandedValues = expandInterpolateCondtionals(layer, type, key, value);
       break;
     default:
       break;

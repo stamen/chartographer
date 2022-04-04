@@ -33,6 +33,8 @@
     let layers = style.layers.filter(l => l.type === 'fill');
     layers = expandLayers(layers);
 
+    console.log(layers.filter(l => l.id.includes('steppp')));
+
     chartHeight = layers.length * 65;
 
     xScale = d3.scaleLinear(
