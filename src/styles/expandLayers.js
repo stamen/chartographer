@@ -1,19 +1,17 @@
-
 const getExpandableProperties = layer => {
   return ['paint', 'layout']
     .map(type => {
       if (!layer[type]) return [];
       return Object.entries(layer[type])
-	.map(([key, value]) => {
-	  if (value[0] === 'case') return { type, key, value };
-	  if (value[0] === 'match') return { type, key, value };
-	})
-	.filter(v => v);
+        .map(([key, value]) => {
+          if (value[0] === 'case') return { type, key, value };
+          if (value[0] === 'match') return { type, key, value };
+        })
+        .filter(v => v);
     })
     .filter(v => v.length)
     .reduce((agg, current) => agg.concat(current), []);
 };
-
 
 /**
  * Expand a case expression to all the possible values the case could output
@@ -38,16 +36,15 @@ const expandCaseExpression = (type, key, expression) => {
       descriptor,
       expandedValue: output,
       condition: {
-	conditionType: 'case',
-	type,
-	key,
-	value: descriptor
+        conditionType: 'case',
+        type,
+        key,
+        value: descriptor
       }
     });
   }
   return expandedValues;
 };
-
 
 /**
  * Expand a match expression to all the possible values the match could output
@@ -68,7 +65,7 @@ const expandMatchExpression = (layer, type, key, expression) => {
 
     let descriptor = [
       JSON.stringify(input),
-      JSON.stringify(matchSeekValue),
+      JSON.stringify(matchSeekValue)
     ].join('==');
 
     if (i === matches.length - 1) {
@@ -80,13 +77,16 @@ const expandMatchExpression = (layer, type, key, expression) => {
     // mutually exclusive to this candidate layer. If so, don't add this
     // layer.
     const existingMatches = layer?.metadata?.conditions ?? [];
-    const existingMatchesAreMutuallyExclusive = existingMatches.some(otherMatch => {
-      if (JSON.stringify(input) !== JSON.stringify(otherMatch.input)) return false;
-      if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
-	return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+    const existingMatchesAreMutuallyExclusive = existingMatches.some(
+      otherMatch => {
+        if (JSON.stringify(input) !== JSON.stringify(otherMatch.input))
+          return false;
+        if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
+          return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+        }
+        return matchSeekValue !== otherMatch.value;
       }
-      return matchSeekValue !== otherMatch.value;
-    });
+    );
 
     if (existingMatchesAreMutuallyExclusive) continue;
 
@@ -94,17 +94,17 @@ const expandMatchExpression = (layer, type, key, expression) => {
       descriptor,
       expandedValue: output,
       condition: {
-	conditionType: 'match',
-	type,
-	key,
-	input,
-	value: matchSeekValue
+        conditionType: 'match',
+        type,
+        key,
+        input,
+        value: matchSeekValue
       }
     });
   }
 
   return expandedValues;
-}
+};
 
 /**
  * Expand a layer based on case and match expressions.
@@ -139,38 +139,38 @@ const expandLayer = layer => {
     // recurse to further expand the layer, if necessary
     return expandedValues
       .map(({ descriptor, expandedValue, condition }) => {
-	let combinedDescriptor = descriptor;
-	if (layer?.metadata?.descriptor) {
-	  combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
-	}
+        let combinedDescriptor = descriptor;
+        if (layer?.metadata?.descriptor) {
+          combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
+        }
 
-	let conditions = [...layer?.metadata?.conditions ?? []];
-	if (condition) conditions.push(condition);
+        let conditions = [...(layer?.metadata?.conditions ?? [])];
+        if (condition) conditions.push(condition);
 
-	const newLayer = {
-	  ...layer,
-	  id: `${layer.id}-${descriptor}`,
-	  metadata: {
-	    parentId: layer?.metadata?.parentId ?? layer.id,
-	    descriptor: combinedDescriptor,
-	    conditions
-	  },
-	  [type]: {
-	    ...layer[type],
-	    [key]: expandedValue
-	  }
-	};
+        const newLayer = {
+          ...layer,
+          id: `${layer.id}-${descriptor}`,
+          metadata: {
+            parentId: layer?.metadata?.parentId ?? layer.id,
+            descriptor: combinedDescriptor,
+            conditions
+          },
+          [type]: {
+            ...layer[type],
+            [key]: expandedValue
+          }
+        };
 
-	return expandLayer(newLayer);
+        return expandLayer(newLayer);
       })
       .reduce((agg, current) => agg.concat(current), []);
   }
 
   return [layer];
-
 };
 
 export const expandLayers = layers => {
-  return layers.map(expandLayer)
+  return layers
+    .map(expandLayer)
     .reduce((agg, current) => agg.concat(current), []);
 };

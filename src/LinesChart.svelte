@@ -4,6 +4,7 @@
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
   import { gatherOutputs } from './gather-outputs';
+  import { expandLayers } from './styles/expandLayers';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
@@ -14,7 +15,7 @@
   let gradients = [];
   $: tooltip = {};
 
-  const handleTooltipClose = () => tooltip = {};
+  const handleTooltipClose = () => (tooltip = {});
 
   $: {
     style; // Make this block react to the style prop changing
@@ -37,7 +38,7 @@
   function getFullLineWidth(layer) {
     const lineWidth = layer?.paint?.['line-width'];
     if (!lineWidth) return 1;
-    return Math.max(...gatherOutputs(lineWidth))
+    return Math.max(...gatherOutputs(lineWidth));
   }
 
   function getPath(layer) {
@@ -51,14 +52,22 @@
     let path;
 
     if (Array.isArray(width)) {
-      const [expressionType, [interpolationType, interpolationBase], [attribute]] = width;
-      if (expressionType === 'interpolate' && interpolationType === 'linear' && attribute === 'zoom') {
+      const [
+        expressionType,
+        [interpolationType, interpolationBase],
+        [attribute]
+      ] = width;
+      if (
+        expressionType === 'interpolate' &&
+        interpolationType === 'linear' &&
+        attribute === 'zoom'
+      ) {
         // TODO look into base for interpolation
 
         const widthArray = width.slice(3);
         topPoints.push([
           xScale(layerMinZoom),
-          adjustedYScale(layer.id) + (yScale.bandwidth() / 2)
+          adjustedYScale(layer.id) + yScale.bandwidth() / 2
         ]);
         for (let i = 0; i < widthArray.length; i += 2) {
           const zoom = widthArray[i];
@@ -66,46 +75,72 @@
 
           if (zoom < layerMinZoom) continue;
 
-          topPoints.push([xScale(zoom), adjustedYScale(layer.id) - (width / 2) + yScale.bandwidth() / 2]);
+          topPoints.push([
+            xScale(zoom),
+            adjustedYScale(layer.id) - width / 2 + yScale.bandwidth() / 2
+          ]);
           if (width > 0) {
-            bottomPoints.push([xScale(zoom), adjustedYScale(layer.id) + (width / 2) + yScale.bandwidth() / 2]);
+            bottomPoints.push([
+              xScale(zoom),
+              adjustedYScale(layer.id) + width / 2 + yScale.bandwidth() / 2
+            ]);
           }
         }
 
         [lastZoom, lastWidth] = widthArray.slice(-2);
-      }
-      else if (interpolationType === 'exponential') {
+      } else if (interpolationType === 'exponential') {
         // TODO create scale, sample zoom levels, create points
-      }
-      else {
+      } else {
         console.log('array but not linear', width);
       }
-    }
-    else if (width && width.stops) {
+    } else if (width && width.stops) {
       width.stops.forEach(stop => {
         const [zoom, width] = stop;
 
-        topPoints.push([xScale(zoom), adjustedYScale(layer.id) - (width / 2) + yScale.bandwidth() / 2]);
+        topPoints.push([
+          xScale(zoom),
+          adjustedYScale(layer.id) - width / 2 + yScale.bandwidth() / 2
+        ]);
         if (width > 0) {
-          bottomPoints.push([xScale(zoom), adjustedYScale(layer.id) + (width / 2) + yScale.bandwidth() / 2]);
+          bottomPoints.push([
+            xScale(zoom),
+            adjustedYScale(layer.id) + width / 2 + yScale.bandwidth() / 2
+          ]);
         }
       });
 
       [lastZoom, lastWidth] = width.stops.slice(-1)[0];
-    }
-    else if (!width) {
+    } else if (!width) {
       let layerWidth = 1;
-      topPoints.push([xScale(layerMinZoom), adjustedYScale(layer.id) - (layerWidth / 2) + yScale.bandwidth() / 2]);
-      topPoints.push([xScale(layerMaxZoom), adjustedYScale(layer.id) - (layerWidth / 2) + yScale.bandwidth() / 2]);
-      bottomPoints.push([xScale(layerMinZoom), adjustedYScale(layer.id) + (layerWidth / 2) + yScale.bandwidth() / 2]);
-      bottomPoints.push([xScale(layerMaxZoom), adjustedYScale(layer.id) + (layerWidth / 2) + yScale.bandwidth() / 2]);
+      topPoints.push([
+        xScale(layerMinZoom),
+        adjustedYScale(layer.id) - layerWidth / 2 + yScale.bandwidth() / 2
+      ]);
+      topPoints.push([
+        xScale(layerMaxZoom),
+        adjustedYScale(layer.id) - layerWidth / 2 + yScale.bandwidth() / 2
+      ]);
+      bottomPoints.push([
+        xScale(layerMinZoom),
+        adjustedYScale(layer.id) + layerWidth / 2 + yScale.bandwidth() / 2
+      ]);
+      bottomPoints.push([
+        xScale(layerMaxZoom),
+        adjustedYScale(layer.id) + layerWidth / 2 + yScale.bandwidth() / 2
+      ]);
     }
 
     if (topPoints.length) {
       if (layerMaxZoom > lastZoom) {
-        topPoints.push([xScale(layerMaxZoom), adjustedYScale(layer.id) - (lastWidth / 2) + yScale.bandwidth() / 2]);
+        topPoints.push([
+          xScale(layerMaxZoom),
+          adjustedYScale(layer.id) - lastWidth / 2 + yScale.bandwidth() / 2
+        ]);
         if (lastWidth > 0) {
-          bottomPoints.push([xScale(layerMaxZoom), adjustedYScale(layer.id) + (lastWidth / 2) + yScale.bandwidth() / 2]);
+          bottomPoints.push([
+            xScale(layerMaxZoom),
+            adjustedYScale(layer.id) + lastWidth / 2 + yScale.bandwidth() / 2
+          ]);
         }
       }
 
@@ -115,8 +150,11 @@
     return path;
   }
 
-  const getDrawLayer = (layer) => {
-    const { color: layerColor, gradients: layerGradients } = getColor(layer, xScale);
+  const getDrawLayer = layer => {
+    const { color: layerColor, gradients: layerGradients } = getColor(
+      layer,
+      xScale
+    );
     const { color, strokeColor, strokeWidth } = layerColor;
     gradients = gradients.concat(layerGradients);
     const path = getPath(layer);
@@ -126,16 +164,24 @@
       path: d3.line()(path || []),
       fill: color,
       stroke: strokeColor,
-      strokeWidth: strokeWidth,
+      strokeWidth: strokeWidth
     };
   };
 
   $: if (style && style.layers) {
-    const lineLayers = style.layers.filter(l => l.type === 'line');
+    let lineLayers = style.layers.filter(l => l.type === 'line');
+    lineLayers = expandLayers(lineLayers);
     chartHeight = lineLayers.length * 65;
 
-    xScale = d3.scaleLinear([MIN_ZOOM, MAX_ZOOM], [MARGIN.left, CHART_WIDTH - MARGIN.right]);
-    yScale = d3.scaleBand(lineLayers.map(({ id }) => id), [MARGIN.top, chartHeight - MARGIN.bottom])
+    xScale = d3.scaleLinear(
+      [MIN_ZOOM, MAX_ZOOM],
+      [MARGIN.left, CHART_WIDTH - MARGIN.right]
+    );
+    yScale = d3
+      .scaleBand(
+        lineLayers.map(({ id }) => id),
+        [MARGIN.top, chartHeight - MARGIN.bottom]
+      )
       .padding(0.25);
 
     // Adjust the yScale to account for layer width since D3 scaleBand spaces evenly
@@ -149,7 +195,9 @@
     for (let i = 0; i < lineLayers.length; i++) {
       const l = lineLayers[i];
       let placement = yScaleObj[l.id];
-      const prevLineWidth = lineLayers[i - 1] ? getFullLineWidth(lineLayers[i - 1]) : 1;
+      const prevLineWidth = lineLayers[i - 1]
+        ? getFullLineWidth(lineLayers[i - 1])
+        : 1;
       const currentLineWidth = getFullLineWidth(l);
       yOffset += prevLineWidth / 2 + currentLineWidth / 2;
       const nextPlacement = placement + yOffset;
@@ -160,7 +208,7 @@
     chartHeight = chartHeight + yOffset;
 
     // Adjusted yScale function to use throughout
-    adjustedYScale = (layerId) => yScaleObj[layerId];    
+    adjustedYScale = layerId => yScaleObj[layerId];
 
     zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
 
@@ -173,7 +221,7 @@
   }
 
   onMount(() => {
-    document.addEventListener('scroll', () => scrollY = window.scrollY);
+    document.addEventListener('scroll', () => (scrollY = window.scrollY));
   });
 
   function handleClick(layer) {
@@ -183,7 +231,6 @@
       top: adjustedYScale(layer.id) + yScale.bandwidth()
     };
   }
-
 </script>
 
 <div class="fills-chart">
@@ -226,8 +273,12 @@
     </g>
 
     <g transform="translate(0, {MARGIN.top + scrollY})" class="x-axis">
-      {#each zoomLevels as zoomLevel} 
-        <g class="tick" opacity="1" transform="translate({xScale(zoomLevel)}, 0)">
+      {#each zoomLevels as zoomLevel}
+        <g
+          class="tick"
+          opacity="1"
+          transform="translate({xScale(zoomLevel)}, 0)"
+        >
           <text y="9">
             {zoomLevel}
           </text>
@@ -236,9 +287,13 @@
     </g>
 
     <g transform="translate(0, 0)" class="y-axis">
-      {#each layers as layer} 
-        <g class="tick" opacity="1" transform="translate(0,
-          {adjustedYScale(layer.id) + yScale.bandwidth() / 2})">
+      {#each layers as layer}
+        <g
+          class="tick"
+          opacity="1"
+          transform="translate(0,
+          {adjustedYScale(layer.id) + yScale.bandwidth() / 2})"
+        >
           <text y="9">
             {layer.id}
           </text>
