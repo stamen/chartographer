@@ -23,6 +23,12 @@ const getExpandableProperties = layer => {
     .reduce((agg, current) => agg.concat(current), []);
 };
 
+const createDescriptor = (propertyId, condition) => {
+  return `${propertyId}-${
+    typeof condition === 'string' ? condition : JSON.stringify(condition)
+  }`;
+};
+
 /**
  * Expand a case expression to all the possible values the case could output
  *
@@ -39,10 +45,10 @@ const expandCaseExpression = (layer, type, key, expression, prevDescriptor) => {
 
   for (let i = 0; i < cases.length; i += 2) {
     let descriptor = prevDescriptor ? `${prevDescriptor}-` : '';
-    descriptor = descriptor + JSON.stringify(cases[i]);
+    descriptor = descriptor + createDescriptor(key, cases[i]);
     let output = cases[i + 1];
     if (i === cases.length - 1) {
-      descriptor = 'fallback';
+      descriptor = createDescriptor(key, 'fallback');
       output = cases[i];
     }
 
@@ -97,12 +103,16 @@ const expandMatchExpression = (
     let descriptor = prevDescriptor ? `${prevDescriptor}-` : '';
 
     if (i === matches.length - 1) {
-      descriptor = matchSeekValue = descriptor + 'fallback';
+      descriptor = matchSeekValue =
+        descriptor + createDescriptor(key, 'fallback');
       output = matches[i];
     } else {
       descriptor =
         descriptor +
-        [JSON.stringify(input), JSON.stringify(matchSeekValue)].join('==');
+        createDescriptor(
+          key,
+          [JSON.stringify(input), JSON.stringify(matchSeekValue)].join('==')
+        );
     }
 
     // Look at layer metadata to see if matches traversed thus far are
@@ -211,7 +221,8 @@ const expandScaleCondtionals = (layer, type, key, value) => {
         [key]: val
       }
     };
-    let nextValues = expandValueByType(fakeLayer, type, key, val);
+    const descriptor = zoom;
+    let nextValues = expandValueByType(fakeLayer, type, key, val, descriptor);
     if (!nextValues.length) {
       nextValues = [{ expandedValue: val }];
     }
@@ -334,9 +345,11 @@ const expandLayer = layer => {
         let conditions = [...(layer?.metadata?.conditions ?? [])];
         if (condition) conditions.push(condition);
 
+        const nextLayerId = `${layer.id}-${descriptor}`;
+
         const newLayer = {
           ...layer,
-          id: `${layer.id}-${descriptor}`,
+          id: nextLayerId,
           metadata: {
             parentId: layer?.metadata?.parentId ?? layer.id,
             descriptor: combinedDescriptor,
