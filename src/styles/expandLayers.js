@@ -196,12 +196,10 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     }
     case 'step': {
       inputOutputs = value.slice(2);
-      const fallback = inputOutputs.pop();
       zooms.push(0);
       inputOutputs.forEach((val, i) =>
         i % 2 === 0 ? outputs.push(val) : zooms.push(val)
       );
-      outputs.push(fallback);
       break;
     }
   }
@@ -222,6 +220,35 @@ const expandScaleCondtionals = (layer, type, key, value) => {
       }
     };
     let nextValues = expandValueByType(fakeLayer, type, key, val);
+
+    // Expand property values matched in array so we can track individual properties
+    // across zooms
+    nextValues = nextValues.reduce((acc, nextValue) => {
+      let conditionValues = nextValue.condition.value;
+      if (!Array.isArray(conditionValues)) {
+        acc.push(nextValue);
+        return acc;
+      }
+
+      for (const propValue of conditionValues) {
+        const expandedVal = {
+          ...nextValue,
+          condition: { ...nextValue.condition, value: propValue },
+          descriptor: createDescriptor(
+            key,
+            [
+              JSON.stringify(nextValue.condition.input),
+              JSON.stringify(propValue)
+            ].join('==')
+          )
+        };
+
+        acc.push(expandedVal);
+      }
+      return acc;
+    }, []);
+
+    // If there's no expanded values that means it's a literal value to pass on
     if (!nextValues.length) {
       nextValues = [{ expandedValue: val }];
     }
@@ -230,8 +257,7 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     expandedOutputs = expandedOutputs.concat(nextValues);
     nextValues.forEach(
       val =>
-        val?.condition?.value &&
-        dataPropertyValues.add(JSON.stringify(val.condition.value))
+        val?.condition?.value && dataPropertyValues.add(val.condition.value)
     );
   }
 
@@ -240,10 +266,7 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     // Outputs filtered to those relevant by property
     // Expanded outputs always have an expandedValue and zoom property, with optional condition and descriptor
     const filteredOutputs = expandedOutputs
-      .filter(
-        output =>
-          !output.condition || JSON.stringify(output?.condition?.value) === v
-      )
+      .filter(output => !output.condition || output?.condition?.value === v)
       .sort((a, b) => a.zoom - b.zoom);
 
     // Build interpolation expression
@@ -267,7 +290,10 @@ const expandScaleCondtionals = (layer, type, key, value) => {
 
     // Grab the first expanded value data structure with a condition which should be the same except for value we're replacing
     // At least one output has a condition
-    let nextExpandedValue = filteredOutputs.find(o => !!o.condition);
+    // It's not harmful to mutate this but makes debugging more difficult
+    let nextExpandedValue = JSON.parse(
+      JSON.stringify(filteredOutputs.find(o => !!o.condition))
+    );
     nextExpandedValue.expandedValue = exp;
     delete nextExpandedValue.zoom;
 
