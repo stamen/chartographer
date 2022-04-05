@@ -1,14 +1,18 @@
+const isHandledConditional = value => {
+  if (!Array.isArray(value)) return false;
+  return value[0] === 'match' || value[0] === 'case';
+};
+
 const getExpandableProperties = layer => {
   return ['paint', 'layout']
     .map(type => {
       if (!layer[type]) return [];
       return Object.entries(layer[type])
         .map(([key, value]) => {
-          if (value[0] === 'case') return { type, key, value };
-          if (value[0] === 'match') return { type, key, value };
+          if (isHandledConditional(value)) return { type, key, value };
           if (
             (value[0] === 'interpolate' || value[0] === 'step') &&
-            value.flat(Infinity).some(v => v === 'match' || v === 'case')
+            value.some(v => isHandledConditional(v))
           ) {
             return { type, key, value };
           }
@@ -44,10 +48,7 @@ const expandCaseExpression = (layer, type, key, expression, prevDescriptor) => {
 
     let nextValues = [];
 
-    if (
-      (Array.isArray(output) && output[0] === 'match') ||
-      output[0] === 'case'
-    ) {
+    if (isHandledConditional(output)) {
       nextValues = expandValueByType(layer, type, key, output, descriptor);
     } else {
       nextValues = [
@@ -150,6 +151,17 @@ const expandMatchExpression = (
   return expandedValues;
 };
 
+/**
+ * Expand a conditional expression inside an interpolate expression
+ * We don't need an optional desriptor here since interpolations can only happen
+ * in the outermost wrapped expression so cannot be nested
+ *
+ * @param {string} layer - the layer the expression is part of
+ * @param {string} type - 'layout' or 'paint'
+ * @param {string} key - the property name
+ * @param {string} expression - the expression
+ * @returns {Array} the expanded values
+ */
 const expandInterpolateCondtionals = (layer, type, key, value) => {
   const [interpolationType] = value;
 
@@ -207,9 +219,9 @@ const expandInterpolateCondtionals = (layer, type, key, value) => {
   // For each data property value referenced, create interpolation across all zooms
   const expandedInterpolateValues = [...dataPropertyValues].reduce((acc, v) => {
     // Outputs filtered to those relevant by property
-    const filteredOutputs = expandedOutputs.filter(
-      output => output.condition.value === v
-    );
+    const filteredOutputs = expandedOutputs
+      .filter(output => output.condition.value === v)
+      .sort((a, b) => a.zoom - b.zoom);
 
     // Build interpolation expression
     let exp =
@@ -244,6 +256,7 @@ const expandInterpolateCondtionals = (layer, type, key, value) => {
   return expandedInterpolateValues;
 };
 
+// Pass along appropriate args to the appropriate function
 const expandValueByType = (layer, type, key, value, descriptor) => {
   let expandedValues = [];
   switch (value[0]) {
