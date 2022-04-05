@@ -211,20 +211,25 @@ const expandScaleCondtionals = (layer, type, key, value) => {
         [key]: val
       }
     };
-    let nextValues =
-      val[0] === 'match'
-        ? expandMatchExpression(fakeLayer, type, key, val)
-        : expandCaseExpression(fakeLayer, type, key, val);
+    let nextValues = expandValueByType(fakeLayer, type, key, val);
+    if (!nextValues.length) {
+      nextValues = [{ expandedValue: val }];
+    }
+
     nextValues = nextValues.map(v => ({ ...v, zoom }));
     expandedOutputs = expandedOutputs.concat(nextValues);
-    nextValues.forEach(val => dataPropertyValues.add(val.condition.value));
+    nextValues.forEach(
+      val =>
+        val?.condition?.value && dataPropertyValues.add(val.condition.value)
+    );
   }
 
   // For each data property value referenced, create interpolation across all zooms
   const expandedInterpolateValues = [...dataPropertyValues].reduce((acc, v) => {
     // Outputs filtered to those relevant by property
+    // Expanded outputs always have an expandedValue and zoom property, with optional condition and descriptor
     const filteredOutputs = expandedOutputs
-      .filter(output => output.condition.value === v)
+      .filter(output => !output.condition || output?.condition?.value === v)
       .sort((a, b) => a.zoom - b.zoom);
 
     // Build interpolation expression
@@ -246,8 +251,9 @@ const expandScaleCondtionals = (layer, type, key, value) => {
       exp = filteredOutputs[0].expandedValue;
     }
 
-    // Grab the first expanded value data structure which should be the same except for value we're replacing
-    let nextExpandedValue = filteredOutputs[0];
+    // Grab the first expanded value data structure with a condition which should be the same except for value we're replacing
+    // At least one output has a condition
+    let nextExpandedValue = filteredOutputs.find(o => !!o.condition);
     nextExpandedValue.expandedValue = exp;
     delete nextExpandedValue.zoom;
 
