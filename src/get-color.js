@@ -50,7 +50,6 @@ const getGradientStops = ({ color, opacity, minZoom, maxZoom, xScale }) => {
       let opacityOutput = opacityIsGradient
         ? getInterpolatedValue(opacity, zoomStop, null)
         : opacity;
-
       opacityOutput = parseFloat(opacityOutput.toFixed(2));
       gradientStops.push({
         offset: ((xScale(zoomStop) - lineStart) / lineLength) * 100,
