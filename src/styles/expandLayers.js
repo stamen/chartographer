@@ -152,8 +152,8 @@ const expandMatchExpression = (
 };
 
 /**
- * Expand a conditional expression inside an interpolate expression
- * We don't need an optional desriptor here since interpolations can only happen
+ * Expand a conditional expression inside a scale expression (interpolate or step)
+ * We don't need an optional desriptor here since scale expressions can only happen
  * in the outermost wrapped expression so cannot be nested
  *
  * @param {string} layer - the layer the expression is part of
@@ -162,15 +162,19 @@ const expandMatchExpression = (
  * @param {string} expression - the expression
  * @returns {Array} the expanded values
  */
-const expandInterpolateCondtionals = (layer, type, key, value) => {
-  const [interpolationType] = value;
+const expandScaleCondtionals = (layer, type, key, value) => {
+  const [scaleType] = value;
+  let interpolationType;
+  if (scaleType !== 'step') {
+    [, interpolationType] = value;
+  }
 
   let inputOutputs = [];
   let zooms = [];
   let outputs = [];
 
   // Pull out outputs and zooms from interpolation
-  switch (interpolationType) {
+  switch (scaleType) {
     case 'interpolate':
     case 'interpolate-hcl':
     case 'interpolate-lab': {
@@ -225,16 +229,14 @@ const expandInterpolateCondtionals = (layer, type, key, value) => {
 
     // Build interpolation expression
     let exp =
-      interpolationType === 'step'
-        ? [interpolationType]
-        : [interpolationType, ['linear']];
+      scaleType === 'step' ? [scaleType] : [scaleType, interpolationType];
 
     exp.push(['zoom']);
 
     if (filteredOutputs.length > 1) {
       for (let i = 0; i < filteredOutputs.length; i++) {
         const output = filteredOutputs[i];
-        const isFirstStep = output.zoom === 0 && interpolationType === 'step';
+        const isFirstStep = output.zoom === 0 && scaleType === 'step';
         if (!isFirstStep) {
           exp.push(output.zoom);
         }
@@ -280,7 +282,7 @@ const expandValueByType = (layer, type, key, value, descriptor) => {
       break;
     case 'interpolate':
     case 'step':
-      expandedValues = expandInterpolateCondtionals(
+      expandedValues = expandScaleCondtionals(
         layer,
         type,
         key,
