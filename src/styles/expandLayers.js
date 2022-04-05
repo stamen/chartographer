@@ -350,6 +350,15 @@ const expandLayer = layer => {
 
 export const expandLayers = layers => {
   return layers
-    .map(expandLayer)
+    .map(layer => {
+      // Until we have testing, better to wrap this and not break the app if something goes awry
+      try {
+        const expandedLayers = expandLayer(layer);
+        return expandedLayers;
+      } catch (err) {
+        console.error(`There was a problem with expanding layers: ${err}`);
+        return [layer];
+      }
+    })
     .reduce((agg, current) => agg.concat(current), []);
 };
