@@ -51,8 +51,6 @@ const getGradientStops = ({ color, opacity, minZoom, maxZoom, xScale }) => {
         ? getInterpolatedValue(opacity, zoomStop, null)
         : opacity;
 
-      // TODO need conditional handling
-      // if (Array.isArray(opacityOutput) || Array.isArray(colorOutput)) return;
       opacityOutput = parseFloat(opacityOutput.toFixed(2));
       gradientStops.push({
         offset: ((xScale(zoomStop) - lineStart) / lineLength) * 100,
