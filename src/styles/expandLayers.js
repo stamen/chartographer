@@ -221,8 +221,7 @@ const expandScaleCondtionals = (layer, type, key, value) => {
         [key]: val
       }
     };
-    const descriptor = zoom;
-    let nextValues = expandValueByType(fakeLayer, type, key, val, descriptor);
+    let nextValues = expandValueByType(fakeLayer, type, key, val);
     if (!nextValues.length) {
       nextValues = [{ expandedValue: val }];
     }
@@ -231,7 +230,8 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     expandedOutputs = expandedOutputs.concat(nextValues);
     nextValues.forEach(
       val =>
-        val?.condition?.value && dataPropertyValues.add(val.condition.value)
+        val?.condition?.value &&
+        dataPropertyValues.add(JSON.stringify(val.condition.value))
     );
   }
 
@@ -240,7 +240,10 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     // Outputs filtered to those relevant by property
     // Expanded outputs always have an expandedValue and zoom property, with optional condition and descriptor
     const filteredOutputs = expandedOutputs
-      .filter(output => !output.condition || output?.condition?.value === v)
+      .filter(
+        output =>
+          !output.condition || JSON.stringify(output?.condition?.value) === v
+      )
       .sort((a, b) => a.zoom - b.zoom);
 
     // Build interpolation expression
@@ -324,49 +327,56 @@ const expandValueByType = (layer, type, key, value, descriptor) => {
  */
 const expandLayer = layer => {
   let expandedValues = [];
+  let layers = [];
 
   const expandableProperties = getExpandableProperties(layer);
   if (expandableProperties.length === 0) return [layer];
 
-  const { type, key, value } = expandableProperties[0];
+  for (const expandableProperty of expandableProperties) {
+    const { type, key, value } = expandableProperty;
 
-  expandedValues = expandValueByType(layer, type, key, value);
+    expandedValues = expandValueByType(layer, type, key, value);
 
-  if (expandedValues.length > 0) {
-    // For each value to expand, create a new layer with that value, then
-    // recurse to further expand the layer, if necessary
-    return expandedValues
-      .map(({ descriptor, expandedValue, condition }) => {
-        let combinedDescriptor = descriptor;
-        if (layer?.metadata?.descriptor) {
-          combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
-        }
-
-        let conditions = [...(layer?.metadata?.conditions ?? [])];
-        if (condition) conditions.push(condition);
-
-        const nextLayerId = `${layer.id}-${descriptor}`;
-
-        const newLayer = {
-          ...layer,
-          id: nextLayerId,
-          metadata: {
-            parentId: layer?.metadata?.parentId ?? layer.id,
-            descriptor: combinedDescriptor,
-            conditions
-          },
-          [type]: {
-            ...layer[type],
-            [key]: expandedValue
+    if (expandedValues.length > 0) {
+      // For each value to expand, create a new layer with that value, then
+      // recurse to further expand the layer, if necessary
+      const nextLayers = expandedValues
+        .map(({ descriptor, expandedValue, condition }) => {
+          let combinedDescriptor = descriptor;
+          if (layer?.metadata?.descriptor) {
+            combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
           }
-        };
 
-        return expandLayer(newLayer);
-      })
-      .reduce((agg, current) => agg.concat(current), []);
+          let conditions = [...(layer?.metadata?.conditions ?? [])];
+          if (condition) conditions.push(condition);
+
+          const nextLayerId = `${layer.id}-${descriptor}`;
+
+          const newLayer = {
+            ...layer,
+            id: nextLayerId,
+            metadata: {
+              parentId: layer?.metadata?.parentId ?? layer.id,
+              descriptor: combinedDescriptor,
+              conditions
+            },
+            [type]: {
+              ...layer[type],
+              [key]: expandedValue
+            }
+          };
+
+          return newLayer;
+        })
+        .reduce((agg, current) => agg.concat(current), []);
+
+      layers = layers.concat(nextLayers);
+    } else {
+      layers = layers.concat([layer]);
+    }
   }
 
-  return [layer];
+  return layers;
 };
 
 export const expandLayers = layers => {
