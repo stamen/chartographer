@@ -222,7 +222,7 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     let nextValues = expandValueByType(fakeLayer, type, key, val);
 
     // Expand property values matched in array so we can track individual properties
-    // across zooms
+    // across zooms where they may not be specified in the same way
     nextValues = nextValues.reduce((acc, nextValue) => {
       let conditionValues = nextValue.condition.value;
       if (!Array.isArray(conditionValues)) {
