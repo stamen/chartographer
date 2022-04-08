@@ -90,19 +90,19 @@ const expandMatchExpression = (layer, type, key, expression) => {
     // Look at layer metadata to see if matches traversed thus far are
     // mutually exclusive to this candidate layer. If so, don't add this
     // layer.
-    const existingMatches = layer?.metadata?.conditions ?? [];
-    const existingMatchesAreMutuallyExclusive = existingMatches.some(
-      otherMatch => {
-        if (JSON.stringify(input) !== JSON.stringify(otherMatch.input))
-          return false;
-        if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
-          return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
-        }
-        return matchSeekValue !== otherMatch.value;
-      }
-    );
+    // const existingMatches = layer?.metadata?.conditions ?? [];
+    // const existingMatchesAreMutuallyExclusive = existingMatches.some(
+    //   otherMatch => {
+    //     if (JSON.stringify(input) !== JSON.stringify(otherMatch.input))
+    //       return false;
+    //     if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
+    //       return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+    //     }
+    //     return matchSeekValue !== otherMatch.value;
+    //   }
+    // );
 
-    if (existingMatchesAreMutuallyExclusive) continue;
+    // if (existingMatchesAreMutuallyExclusive) continue;
 
     expandedValues.push({
       descriptor,
@@ -280,6 +280,12 @@ const expandScaleCondtionals = (layer, type, key, value) => {
       scaleExpression.push(zoom);
     }
 
+    if (!isHandledConditional(val)) {
+      expandedOutputs = expandedOutputs.concat([{ value: val, zoom }]);
+      scaleExpression.push(val);
+      continue;
+    }
+
     const expandedValues = recurseValues(val);
 
     let createFakeExpression = expanded => {
@@ -304,6 +310,7 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     };
 
     const fakeExpression = createFakeExpression(expandedValues);
+
     scaleExpression.push(fakeExpression);
 
     const flattenRecurseValues = expanded => {
@@ -331,10 +338,6 @@ const expandScaleCondtionals = (layer, type, key, value) => {
   }, []);
 
   expandedOutputs = expandedOutputs.map(val => {
-    const properties = {
-      condition: val.allConditions.map(c => JSON.stringify(c))
-    };
-
     let expandedScale = [scaleType];
     if (scaleType === 'interpolate') {
       expandedScale.push(interpolationType);
@@ -348,17 +351,25 @@ const expandScaleCondtionals = (layer, type, key, value) => {
         expandedScale.push(zoom);
       }
 
-      console.log(scaleExpression);
-      const evaluated = evaluateExpression({
-        layerType: layer.type,
-        propertyType: type,
-        propertyId: key,
-        properties,
-        value: scaleExpression,
-        zoom
-      });
+      if (!val.expandedValue && val.value !== undefined) {
+        // Really we should continue and ignore here
+        expandedScale.push(val.value);
+      } else {
+        const properties = {
+          condition: val.allConditions.map(c => JSON.stringify(c))
+        };
 
-      expandedScale.push(evaluated);
+        const evaluated = evaluateExpression({
+          layerType: layer.type,
+          propertyType: type,
+          propertyId: key,
+          properties,
+          value: scaleExpression,
+          zoom: Math.max(zoom, 1)
+        });
+
+        expandedScale.push(evaluated);
+      }
     });
 
     const nextVal = { ...val, expandedValue: expandedScale };
@@ -367,7 +378,7 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     return nextVal;
   });
 
-  return expandedOutputs;
+  return expandedOutputs.filter(item => !!item.descriptor);
 };
 
 // ------------------------------------------------------------------------------------------------------------------------
@@ -449,13 +460,13 @@ export const expandLayers = layers => {
   return layers
     .map(layer => {
       // Until we have testing, better to wrap this and not break the app if something goes awry
-      try {
-        const expandedLayers = expandLayer(layer);
-        return expandedLayers;
-      } catch (err) {
-        console.error(`There was a problem with expanding layers: ${err}`);
-        return [layer];
-      }
+      // try {
+      const expandedLayers = expandLayer(layer);
+      return expandedLayers;
+      // } catch (err) {
+      //   console.error(`There was a problem with expanding layers: ${err}`);
+      //   return [layer];
+      // }
     })
     .reduce((agg, current) => agg.concat(current), []);
 };
