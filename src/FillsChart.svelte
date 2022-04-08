@@ -30,7 +30,7 @@
   let zoomLevels = [];
 
   $: if (style && style.layers) {
-    let layers = style.layers.filter(l => l.type === 'fill');
+    let layers = style.layers;
     layers = expandLayers(layers);
     
     chartHeight = layers.length * 65;

@@ -13,7 +13,8 @@ const getExpandableProperties = layer => {
         .map(([key, value]) => {
           if (isHandledConditional(value)) return { type, key, value };
           if (
-            (value[0] === 'interpolate' || value[0] === 'step') &&
+            ((value[0] === 'interpolate' && value?.[2]?.[0] === 'zoom') ||
+              (value[0] === 'step' && value?.[1]?.[0] === 'zoom')) &&
             value.some(v => isHandledConditional(v))
           ) {
             return { type, key, value };
@@ -86,23 +87,22 @@ const expandMatchExpression = (layer, type, key, expression) => {
       output = matches[i];
     }
 
-    // TODO return to this
     // Look at layer metadata to see if matches traversed thus far are
     // mutually exclusive to this candidate layer. If so, don't add this
     // layer.
-    // const existingMatches = layer?.metadata?.conditions ?? [];
-    // const existingMatchesAreMutuallyExclusive = existingMatches.some(
-    //   otherMatch => {
-    //     if (JSON.stringify(input) !== JSON.stringify(otherMatch.input))
-    //       return false;
-    //     if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
-    //       return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
-    //     }
-    //     return matchSeekValue !== otherMatch.value;
-    //   }
-    // );
+    const existingMatches = layer?.metadata?.conditions ?? [];
+    const existingMatchesAreMutuallyExclusive = existingMatches.some(
+      otherMatch => {
+        if (JSON.stringify(input) !== JSON.stringify(otherMatch.input))
+          return false;
+        if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
+          return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+        }
+        return matchSeekValue !== otherMatch.value;
+      }
+    );
 
-    // if (existingMatchesAreMutuallyExclusive) continue;
+    if (existingMatchesAreMutuallyExclusive) continue;
 
     expandedValues.push({
       descriptor,
@@ -120,8 +120,8 @@ const expandMatchExpression = (layer, type, key, expression) => {
   return expandedValues;
 };
 
-// --------------------------------------------------------------------------------------------------------------------------
-
+// Spreads matching properties from arrays in match expressions so they can
+// be followed along a scale function
 const spreadMatchExpression = matchExp => {
   const inputOutputs = matchExp.slice(2);
   let fallback = inputOutputs.pop();
@@ -160,38 +160,6 @@ const spreadMatchExpression = matchExp => {
   ];
 
   return nextMatchExp;
-};
-
-const gatherInputOutputs = expression => {
-  const expressionType = expression[0];
-  let inputOutputs = [];
-  let fallback;
-  let inputs = [];
-  let outputs = [];
-  switch (expressionType) {
-    case 'case': {
-      inputOutputs = expression.slice(1);
-      break;
-    }
-    case 'match': {
-      inputOutputs = expression.slice(2);
-      break;
-    }
-  }
-  fallback = inputOutputs.pop();
-  inputOutputs.forEach((val, i) =>
-    i % 2 !== 0 ? outputs.push(val) : inputs.push(val)
-  );
-  outputs.push(fallback);
-  outputs.forEach(output => {
-    if (isHandledConditional(output)) {
-      const { inputs: nestedInputs, outputs: nestedOutputs } =
-        gatherInputOutputs(output);
-      inputs = inputs.concat(nestedInputs);
-      outputs = outputs.concat(nestedOutputs);
-    }
-  });
-  return { inputs, outputs };
 };
 
 /**
@@ -252,39 +220,7 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     }
   });
 
-  // creates array of all values
-  const flatRecurseValues = (v, allConditions) => {
-    const fakeLayer = createFakeLayer(v);
-    const expandableProperties = getExpandableProperties(fakeLayer);
-    const { type, key, value } = expandableProperties[0];
-
-    return expandValueByType(layer, type, key, value).reduce((acc, expV) => {
-      let currentCondition = 'fallback';
-      if (expV.condition.value !== 'fallback') {
-        currentCondition =
-          expV.condition.conditionType === 'case'
-            ? JSON.parse(expV.condition.value)
-            : ['==', expV.condition.input, expV.condition.value];
-      }
-      const nextConditions = allConditions
-        ? allConditions.concat([currentCondition])
-        : [currentCondition];
-
-      if (!isHandledConditional(expV.expandedValue)) {
-        acc.push({ ...expV, allConditions: nextConditions });
-        return acc;
-      }
-      acc = acc.concat(
-        flatRecurseValues(expV.expandedValue, nextConditions).map(item => ({
-          ...item,
-          descriptor: `${expV.descriptor}-${item.descriptor}`
-        }))
-      );
-      return acc;
-    }, []);
-  };
-
-  // Creates nested obj
+  // Creates nested obj of expanded values
   const recurseValues = (v, allConditions) => {
     const fakeLayer = createFakeLayer(v);
     const expandableProperties = getExpandableProperties(fakeLayer);
@@ -327,7 +263,7 @@ const expandScaleCondtionals = (layer, type, key, value) => {
 
   let expandedOutputs = [];
 
-  // Expand individual outputs into expanded values and add zoom
+  // Create a new expression to check values by
   let scaleExpression = [scaleType];
   if (scaleType === 'interpolate') {
     scaleExpression.push(interpolationType);
@@ -370,31 +306,68 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     const fakeExpression = createFakeExpression(expandedValues);
     scaleExpression.push(fakeExpression);
 
-    expandedOutputs = expandedOutputs.concat(flatRecurseValues(val));
+    const flattenRecurseValues = expanded => {
+      return Object.keys(expanded).reduce((acc, cond) => {
+        if (expanded[cond].descriptor) {
+          acc.push(expanded[cond]);
+        } else {
+          acc = acc.concat(flattenRecurseValues(expanded[cond]));
+        }
+        return acc;
+      }, []);
+    };
+
+    expandedOutputs = expandedOutputs.concat(
+      flattenRecurseValues(expandedValues).map(v => ({ ...v, zoom }))
+    );
   }
 
-  // zooms.forEach(zoom => {
-  expandedOutputs.forEach(val => {
+  // Reduce duplicates across zooms since we'll recalculate the expanded values
+  expandedOutputs = expandedOutputs.reduce((acc, output) => {
+    if (!acc.some(item => item.descriptor === output.descriptor)) {
+      acc.push(output);
+    }
+    return acc;
+  }, []);
+
+  expandedOutputs = expandedOutputs.map(val => {
     const properties = {
       condition: val.allConditions.map(c => JSON.stringify(c))
     };
 
-    const evaluated = evaluateExpression({
-      layerType: layer.type,
-      propertyType: type,
-      propertyId: key,
-      properties,
-      value: scaleExpression,
-      zoom: val.zoom
+    let expandedScale = [scaleType];
+    if (scaleType === 'interpolate') {
+      expandedScale.push(interpolationType);
+    }
+    expandedScale.push(['zoom']);
+
+    zooms.forEach(zoom => {
+      const isFirstStep = scaleType === 'step' && zoom === 0;
+
+      if (!isFirstStep) {
+        expandedScale.push(zoom);
+      }
+
+      console.log(scaleExpression);
+      const evaluated = evaluateExpression({
+        layerType: layer.type,
+        propertyType: type,
+        propertyId: key,
+        properties,
+        value: scaleExpression,
+        zoom
+      });
+
+      expandedScale.push(evaluated);
     });
 
-    console.log({
-      [val.descriptor]: { evaluated, expandedValue: val.expandedValue }
-    });
+    const nextVal = { ...val, expandedValue: expandedScale };
+    delete nextVal.allConditions;
+    delete nextVal.zoom;
+    return nextVal;
   });
-  // });
 
-  // console.log(expandedOutputs);
+  return expandedOutputs;
 };
 
 // ------------------------------------------------------------------------------------------------------------------------
@@ -411,27 +384,13 @@ const expandValueByType = (layer, type, key, value) => {
       break;
     case 'interpolate':
     case 'step':
-      expandScaleCondtionals(layer, type, key, value);
-      // expandedValues = expandScaleCondtionals(layer, type, key, value);
+      expandedValues = expandScaleCondtionals(layer, type, key, value);
       break;
     default:
       break;
   }
   return expandedValues;
 };
-
-// const getExpandedValues = layer => {
-//   let expandedValues = [];
-
-//   const expandableProperties = getExpandableProperties(layer);
-//   if (expandableProperties.length === 0) return [layer];
-
-//   const { type, key, value } = expandableProperties[0];
-
-//   expandedValues = expandValueByType(layer, type, key, value);
-
-//   return { type, key, expandedValues };
-// };
 
 /**
  * Expand a layer based on case and match expressions.
@@ -490,13 +449,13 @@ export const expandLayers = layers => {
   return layers
     .map(layer => {
       // Until we have testing, better to wrap this and not break the app if something goes awry
-      // try {
-      const expandedLayers = expandLayer(layer);
-      return expandedLayers;
-      // } catch (err) {
-      //   console.error(`There was a problem with expanding layers: ${err}`);
-      //   return [layer];
-      // }
+      try {
+        const expandedLayers = expandLayer(layer);
+        return expandedLayers;
+      } catch (err) {
+        console.error(`There was a problem with expanding layers: ${err}`);
+        return [layer];
+      }
     })
     .reduce((agg, current) => agg.concat(current), []);
 };
