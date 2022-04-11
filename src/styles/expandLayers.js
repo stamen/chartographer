@@ -120,8 +120,6 @@ const expandMatchExpression = (layer, type, key, expression) => {
   return expandedValues;
 };
 
-// ------------------------------------------------------------------------------------------------------------------------
-
 // Spreads matching properties from arrays in match expressions so they can
 // be followed along a scale function
 const spreadMatchExpression = matchExp => {
@@ -162,6 +160,90 @@ const spreadMatchExpression = matchExp => {
   ];
 
   return nextMatchExp;
+};
+
+// Turns nested expanded values into a conditional expression we can use to evaluate at different zooms
+const nestedExpandedValuesToExpression = expanded => {
+  let caseExpression = ['case'];
+  if (Object.keys(expanded).length === 1) {
+    return Object.values(expanded)[0].expandedValue;
+  }
+  const expression = Object.keys(expanded).reduce((acc, cond) => {
+    let next = expanded[cond];
+    if (next.descriptor) {
+      if (JSON.parse(cond) !== 'fallback') {
+        acc.push(['!=', ['index-of', cond, ['get', 'condition']], -1]);
+      }
+      acc.push(next.expandedValue);
+      return acc;
+    }
+    if (JSON.parse(cond) !== 'fallback') {
+      acc.push(['!=', ['index-of', cond, ['get', 'condition']], -1]);
+    }
+    acc.push(nestedExpandedValuesToExpression(next));
+    return acc;
+  }, []);
+  caseExpression = caseExpression.concat(expression);
+  return caseExpression;
+};
+
+// Creates nested obj of expanded values with a list of all conditions they use
+const getNestedExpandedValues = (layer, allConditions) => {
+  const expandableProperties = getExpandableProperties(layer);
+  const { type, key, value } = expandableProperties[0];
+
+  return expandValueByType(layer, type, key, value).reduce((acc, expV) => {
+    let currentCondition = 'fallback';
+    if (expV.condition.value !== 'fallback') {
+      // TODO can this just be expV.condition.value?
+      currentCondition =
+        expV.condition.conditionType === 'case'
+          ? JSON.parse(expV.condition.value)
+          : ['==', expV.condition.input, expV.condition.value];
+    }
+    const nextConditions = allConditions
+      ? allConditions.concat([currentCondition])
+      : [currentCondition];
+
+    if (!isHandledConditional(expV.expandedValue)) {
+      acc[JSON.stringify(currentCondition)] = {
+        ...expV,
+        allConditions: nextConditions
+      };
+      return acc;
+    }
+    const nextLayer = {
+      ...layer,
+      [type]: {
+        ...layer[type],
+        [key]: expV.expandedValue
+      }
+    };
+    const recursed = getNestedExpandedValues(nextLayer, nextConditions);
+    acc[JSON.stringify(currentCondition)] = Object.keys(recursed).reduce(
+      (accum, cond) => {
+        const item = recursed[cond];
+        accum[cond] = {
+          ...item,
+          descriptor: `${expV.descriptor}-${item.descriptor}`
+        };
+        return accum;
+      },
+      {}
+    );
+    return acc;
+  }, {});
+};
+
+const flattenNestedExpandedValues = expanded => {
+  return Object.keys(expanded).reduce((acc, cond) => {
+    if (expanded[cond].descriptor) {
+      acc.push(expanded[cond]);
+    } else {
+      acc = acc.concat(flattenNestedExpandedValues(expanded[cond]));
+    }
+    return acc;
+  }, []);
 };
 
 /**
@@ -214,63 +296,16 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     return output;
   });
 
-  const createFakeLayer = v => ({
-    ...layer,
-    [type]: {
-      ...layer[type],
-      [key]: v
-    }
-  });
-
-  // Creates nested obj of expanded values
-  const recurseValues = (v, allConditions) => {
-    const fakeLayer = createFakeLayer(v);
-    const expandableProperties = getExpandableProperties(fakeLayer);
-    const { type, key, value } = expandableProperties[0];
-
-    return expandValueByType(layer, type, key, value).reduce((acc, expV) => {
-      let currentCondition = 'fallback';
-      if (expV.condition.value !== 'fallback') {
-        currentCondition =
-          expV.condition.conditionType === 'case'
-            ? JSON.parse(expV.condition.value)
-            : ['==', expV.condition.input, expV.condition.value];
-      }
-      const nextConditions = allConditions
-        ? allConditions.concat([currentCondition])
-        : [currentCondition];
-
-      if (!isHandledConditional(expV.expandedValue)) {
-        acc[JSON.stringify(currentCondition)] = {
-          ...expV,
-          allConditions: nextConditions
-        };
-        return acc;
-      }
-      const recursed = recurseValues(expV.expandedValue, nextConditions);
-      acc[JSON.stringify(currentCondition)] = Object.keys(recursed).reduce(
-        (accum, cond) => {
-          const item = recursed[cond];
-          accum[cond] = {
-            ...item,
-            descriptor: `${expV.descriptor}-${item.descriptor}`
-          };
-          return accum;
-        },
-        {}
-      );
-      return acc;
-    }, {});
-  };
-
   let expandedOutputs = [];
 
   // Create a new expression to check values by
-  let scaleExpression = [scaleType];
+  // This lets us use the expression evaluator in Mapbox GL to determine
+  // non-matching conditionals' values at zooms they aren't specified at
+  let expandedValueScaleExpression = [scaleType];
   if (scaleType === 'interpolate') {
-    scaleExpression.push(interpolationType);
+    expandedValueScaleExpression.push(interpolationType);
   }
-  scaleExpression.push(['zoom']);
+  expandedValueScaleExpression.push(['zoom']);
 
   for (let i = 0; i < outputs.length; i++) {
     const val = outputs[i];
@@ -279,58 +314,34 @@ const expandScaleCondtionals = (layer, type, key, value) => {
     const isFirstStep = scaleType === 'step' && zoom === 0;
 
     if (!isFirstStep) {
-      scaleExpression.push(zoom);
+      expandedValueScaleExpression.push(zoom);
     }
 
+    // If a zoom output is not a conditional, just use the value and zoom and push the value to the new expression
     if (!isHandledConditional(val)) {
       expandedOutputs = expandedOutputs.concat([{ value: val, zoom }]);
-      scaleExpression.push(val);
+      expandedValueScaleExpression.push(val);
       continue;
     }
 
-    const expandedValues = recurseValues(val);
-
-    let createFakeExpression = expanded => {
-      let fakeCaseExpression = ['case'];
-      if (Object.keys(expanded).length === 1) {
-        return Object.values(expanded)[0].expandedValue;
+    const nestedExpandedValues = getNestedExpandedValues({
+      ...layer,
+      [type]: {
+        ...layer[type],
+        [key]: val
       }
-      const expression = Object.keys(expanded).reduce((acc, cond) => {
-        let next = expanded[cond];
-        if (next.descriptor) {
-          if (JSON.parse(cond) !== 'fallback') {
-            acc.push(['!=', ['index-of', cond, ['get', 'condition']], -1]);
-          }
-          acc.push(next.expandedValue);
-          return acc;
-        }
-        if (JSON.parse(cond) !== 'fallback') {
-          acc.push(['!=', ['index-of', cond, ['get', 'condition']], -1]);
-        }
-        acc.push(createFakeExpression(next));
-        return acc;
-      }, []);
-      fakeCaseExpression = fakeCaseExpression.concat(expression);
-      return fakeCaseExpression;
-    };
+    });
 
-    const fakeExpression = createFakeExpression(expandedValues);
+    const conditionalExpression =
+      nestedExpandedValuesToExpression(nestedExpandedValues);
 
-    scaleExpression.push(fakeExpression);
-
-    const flattenRecurseValues = expanded => {
-      return Object.keys(expanded).reduce((acc, cond) => {
-        if (expanded[cond].descriptor) {
-          acc.push(expanded[cond]);
-        } else {
-          acc = acc.concat(flattenRecurseValues(expanded[cond]));
-        }
-        return acc;
-      }, []);
-    };
+    expandedValueScaleExpression.push(conditionalExpression);
 
     expandedOutputs = expandedOutputs.concat(
-      flattenRecurseValues(expandedValues).map(v => ({ ...v, zoom }))
+      flattenNestedExpandedValues(nestedExpandedValues).map(v => ({
+        ...v,
+        zoom
+      }))
     );
   }
 
@@ -343,22 +354,22 @@ const expandScaleCondtionals = (layer, type, key, value) => {
   }, []);
 
   expandedOutputs = expandedOutputs.map(val => {
-    let expandedScale = [scaleType];
+    let scaleExpression = [scaleType];
     if (scaleType === 'interpolate') {
-      expandedScale.push(interpolationType);
+      scaleExpression.push(interpolationType);
     }
-    expandedScale.push(['zoom']);
+    scaleExpression.push(['zoom']);
 
     zooms.forEach(zoom => {
       const isFirstStep = scaleType === 'step' && zoom === 0;
 
       if (!isFirstStep) {
-        expandedScale.push(zoom);
+        scaleExpression.push(zoom);
       }
 
       if (!val.expandedValue && val.value !== undefined) {
         // Really we should continue and ignore here
-        expandedScale.push(val.value);
+        scaleExpression.push(val.value);
       } else {
         const properties = {
           condition: val.allConditions.map(c => JSON.stringify(c))
@@ -369,15 +380,15 @@ const expandScaleCondtionals = (layer, type, key, value) => {
           propertyType: type,
           propertyId: key,
           properties,
-          value: scaleExpression,
+          value: expandedValueScaleExpression,
           zoom: Math.max(zoom, 1)
         });
 
-        expandedScale.push(evaluated);
+        scaleExpression.push(evaluated);
       }
     });
 
-    const nextVal = { ...val, expandedValue: expandedScale };
+    const nextVal = { ...val, expandedValue: scaleExpression };
     delete nextVal.allConditions;
     delete nextVal.zoom;
     return nextVal;
@@ -385,8 +396,6 @@ const expandScaleCondtionals = (layer, type, key, value) => {
 
   return expandedOutputs.filter(item => !!item.descriptor);
 };
-
-// ------------------------------------------------------------------------------------------------------------------------
 
 // Pass along appropriate args to the appropriate function
 const expandValueByType = (layer, type, key, value) => {
@@ -399,8 +408,14 @@ const expandValueByType = (layer, type, key, value) => {
       expandedValues = expandMatchExpression(layer, type, key, value);
       break;
     case 'interpolate':
+      if (value?.[2]?.[0] === 'zoom') {
+        expandedValues = expandScaleCondtionals(layer, type, key, value);
+      }
+      break;
     case 'step':
-      expandedValues = expandScaleCondtionals(layer, type, key, value);
+      if (value?.[1]?.[0] === 'zoom') {
+        expandedValues = expandScaleCondtionals(layer, type, key, value);
+      }
       break;
     default:
       break;
