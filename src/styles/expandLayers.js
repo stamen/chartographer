@@ -90,19 +90,19 @@ const expandMatchExpression = (layer, type, key, expression) => {
     // Look at layer metadata to see if matches traversed thus far are
     // mutually exclusive to this candidate layer. If so, don't add this
     // layer.
-    // const existingMatches = layer?.metadata?.conditions ?? [];
-    // const existingMatchesAreMutuallyExclusive = existingMatches.some(
-    //   otherMatch => {
-    //     if (JSON.stringify(input) !== JSON.stringify(otherMatch.input))
-    //       return false;
-    //     if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
-    //       return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
-    //     }
-    //     return matchSeekValue !== otherMatch.value;
-    //   }
-    // );
+    const existingMatches = layer?.metadata?.conditions ?? [];
+    const existingMatchesAreMutuallyExclusive = existingMatches.some(
+      otherMatch => {
+        if (JSON.stringify(input) !== JSON.stringify(otherMatch.input))
+          return false;
+        if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
+          return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+        }
+        return matchSeekValue !== otherMatch.value;
+      }
+    );
 
-    // if (existingMatchesAreMutuallyExclusive) continue;
+    if (existingMatchesAreMutuallyExclusive) continue;
 
     expandedValues.push({
       descriptor,
@@ -119,6 +119,8 @@ const expandMatchExpression = (layer, type, key, expression) => {
 
   return expandedValues;
 };
+
+// ------------------------------------------------------------------------------------------------------------------------
 
 // Spreads matching properties from arrays in match expressions so they can
 // be followed along a scale function
@@ -290,6 +292,9 @@ const expandScaleCondtionals = (layer, type, key, value) => {
 
     let createFakeExpression = expanded => {
       let fakeCaseExpression = ['case'];
+      if (Object.keys(expanded).length === 1) {
+        return Object.values(expanded)[0].expandedValue;
+      }
       const expression = Object.keys(expanded).reduce((acc, cond) => {
         let next = expanded[cond];
         if (next.descriptor) {
