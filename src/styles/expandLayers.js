@@ -5,6 +5,14 @@ const isHandledConditional = value => {
   return value[0] === 'match' || value[0] === 'case';
 };
 
+const isHandledScale = value => {
+  const isInterpolate =
+    value[0] === 'interpolate' && value?.[2]?.[0] === 'zoom';
+  const isStep = value[0] === 'step' && value?.[1]?.[0] === 'zoom';
+  const isScale = isInterpolate || isStep;
+  return isScale && value.some(v => isHandledConditional(v));
+};
+
 const getExpandableProperties = layer => {
   return ['paint', 'layout']
     .map(type => {
@@ -12,11 +20,7 @@ const getExpandableProperties = layer => {
       return Object.entries(layer[type])
         .map(([key, value]) => {
           if (isHandledConditional(value)) return { type, key, value };
-          if (
-            ((value[0] === 'interpolate' && value?.[2]?.[0] === 'zoom') ||
-              (value[0] === 'step' && value?.[1]?.[0] === 'zoom')) &&
-            value.some(v => isHandledConditional(v))
-          ) {
+          if (isHandledScale(value)) {
             return { type, key, value };
           }
         })
@@ -195,7 +199,6 @@ const getNestedExpandedValues = (layer, allConditions) => {
   return expandValueByType(layer, type, key, value).reduce((acc, expV) => {
     let currentCondition = 'fallback';
     if (expV.condition.value !== 'fallback') {
-      // TODO can this just be expV.condition.value?
       currentCondition =
         expV.condition.conditionType === 'case'
           ? JSON.parse(expV.condition.value)
@@ -408,12 +411,8 @@ const expandValueByType = (layer, type, key, value) => {
       expandedValues = expandMatchExpression(layer, type, key, value);
       break;
     case 'interpolate':
-      if (value?.[2]?.[0] === 'zoom') {
-        expandedValues = expandScaleCondtionals(layer, type, key, value);
-      }
-      break;
     case 'step':
-      if (value?.[1]?.[0] === 'zoom') {
+      if (isHandledScale(value)) {
         expandedValues = expandScaleCondtionals(layer, type, key, value);
       }
       break;
@@ -480,13 +479,13 @@ export const expandLayers = layers => {
   return layers
     .map(layer => {
       // Until we have testing, better to wrap this and not break the app if something goes awry
-      // try {
-      const expandedLayers = expandLayer(layer);
-      return expandedLayers;
-      // } catch (err) {
-      //   console.error(`There was a problem with expanding layers: ${err}`);
-      //   return [layer];
-      // }
+      try {
+        const expandedLayers = expandLayer(layer);
+        return expandedLayers;
+      } catch (err) {
+        console.error(`There was a problem with expanding layers: ${err}`);
+        return [layer];
+      }
     })
     .reduce((agg, current) => agg.concat(current), []);
 };
