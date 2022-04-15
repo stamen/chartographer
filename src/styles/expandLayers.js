@@ -1,11 +1,11 @@
 import { evaluateExpression } from './evaluate-expression';
 
-const isHandledConditional = value => {
+export const isHandledConditional = value => {
   if (!Array.isArray(value)) return false;
   return value[0] === 'match' || value[0] === 'case';
 };
 
-const isHandledScale = value => {
+export const isHandledScale = value => {
   const isInterpolate =
     value[0] === 'interpolate' && value?.[2]?.[0] === 'zoom';
   const isStep = value[0] === 'step' && value?.[1]?.[0] === 'zoom';
@@ -13,7 +13,7 @@ const isHandledScale = value => {
   return isScale && value.some(v => isHandledConditional(v));
 };
 
-const getExpandableProperties = layer => {
+export const getExpandableProperties = layer => {
   return ['paint', 'layout']
     .map(type => {
       if (!layer[type]) return [];
@@ -39,7 +39,7 @@ const getExpandableProperties = layer => {
  * @param {Array} expression - the expression
  * @returns {Array} the expanded values
  */
-const expandCaseExpression = (layer, type, key, expression) => {
+export const expandCaseExpression = (layer, type, key, expression) => {
   const [expressionType, ...cases] = expression;
   let expandedValues = [];
 
@@ -73,7 +73,7 @@ const expandCaseExpression = (layer, type, key, expression) => {
  * @param {string} expression - the expression
  * @returns {Array} the expanded values
  */
-const expandMatchExpression = (layer, type, key, expression) => {
+export const expandMatchExpression = (layer, type, key, expression) => {
   const [expressionType, input, ...matches] = expression;
   let expandedValues = [];
 
@@ -126,7 +126,7 @@ const expandMatchExpression = (layer, type, key, expression) => {
 
 // Spreads matching properties from arrays in match expressions so they can
 // be followed along a scale function
-const spreadMatchExpression = matchExp => {
+export const spreadMatchExpression = matchExp => {
   const inputOutputs = matchExp.slice(2);
   let fallback = inputOutputs.pop();
 
@@ -167,7 +167,7 @@ const spreadMatchExpression = matchExp => {
 };
 
 // Turns nested expanded values into a conditional expression we can use to evaluate at different zooms
-const nestedExpandedValuesToExpression = expanded => {
+export const nestedExpandedValuesToExpression = expanded => {
   let caseExpression = ['case'];
   if (Object.keys(expanded).length === 1) {
     return Object.values(expanded)[0].expandedValue;
@@ -260,7 +260,7 @@ const flattenNestedExpandedValues = expanded => {
  * @param {string} expression - the expression
  * @returns {Array} the expanded values
  */
-const expandScaleCondtionals = (layer, type, key, value) => {
+export const expandScaleCondtionals = (layer, type, key, value) => {
   const [scaleType] = value;
   let interpolationType;
   if (scaleType !== 'step') {
@@ -431,7 +431,7 @@ const expandValueByType = (layer, type, key, value) => {
  * three separate layers, where each has the specific value for the case or
  * fallback that is relevant to it.
  */
-const expandLayer = layer => {
+export const expandLayer = layer => {
   let expandedValues = [];
 
   const expandableProperties = getExpandableProperties(layer);
