@@ -132,8 +132,8 @@
   };
 
   $: if (style && style.layers) {
-    const lineLayers = style.layers.filter(l => l.type === 'line');
-    layers = expandLayers(layers);
+    let lineLayers = style.layers.filter(l => l.type === 'line');
+    lineLayers = expandLayers(lineLayers);
     
     chartHeight = lineLayers.length * 65;
 
