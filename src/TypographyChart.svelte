@@ -18,11 +18,20 @@
   let yScale;
   let tooltip = {};
   let hoverTooltip = {};
+  let selectedLayerId = null;
+  let editMode = false;
+  let labelText = '';
 
   let layers;
   let xAxisFont;
   let zooms = d3.range(minZoom, maxZoom + 1, 2);
-  const handleTooltipClose = () => tooltip = {};
+  
+  const handleTooltipClose = () => { 
+    selectedLayerId = null;
+    editMode = false;
+    labelText = '';
+    tooltip = {};
+  };
   const handleHoverTooltipClose = () => hoverTooltip = {};
 
   // XXX These properties aren't currently supported in this chart, this is 
@@ -72,6 +81,8 @@
     }
 
     handleHoverTooltipClose();
+    handleTooltipClose();
+
     tooltip = {
       text: JSON.stringify({
         layout: layer.layout,
@@ -80,6 +91,7 @@
       left: e.point.x,
       top: e.point.y
     };
+    selectedLayerId = layer.id;
   }
 
   function handleHover(e) {
@@ -366,6 +378,13 @@
     return layers;
   }
 
+  const updateSelectedLayerLabel = () => {
+    if (selectedLayerId) {
+      map.setLayoutProperty(selectedLayerId, 'text-field', labelText);
+    } 
+    handleTooltipClose();
+  };
+
   $: {
     layers = getLayers(style);
     height = layers.length * 45;
@@ -386,7 +405,13 @@
       top={tooltip.top}
       on:close={handleTooltipClose}
     >
-      {tooltip.text || ''}
+    {#if !editMode}
+      <div class="edit-button"><button on:click={() => { editMode = true; }}>Edit label</button></div>
+    {/if}
+    {#if editMode}
+      <div class="edit-button"><input bind:value={labelText}/><button class="submit-button" disabled={!labelText} on:click={updateSelectedLayerLabel}>Submit</button></div>
+    {/if}
+    <p>{tooltip.text || ''}</p>
     </Tooltip>
   {/if}
   {#if Object.keys(hoverTooltip).length > 0}
@@ -401,4 +426,17 @@
 </div>
 
 <style>
+  .edit-button {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+  }
+
+  .submit-button {
+    margin-left: 6px;
+  }
+
+  .submit-button:disabled {
+    pointer-events: none;
+  }
 </style>
