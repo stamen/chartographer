@@ -75,13 +75,16 @@
     }
     const layerId = feature.layer.id;
     const layer = layers.filter(l => l.id === layerId)[0];
-    if (!layer) {
-      handleTooltipClose();
-      return;
-    }
+    const displayLayer = map.getStyle().layers.find(l => l.id === layerId);
 
     handleHoverTooltipClose();
     handleTooltipClose();
+
+    if (!layer) return;
+    if (displayLayer) {
+      const textField = displayLayer?.layout?.['text-field'];
+      labelText = Array.isArray(textField) && textField[0] === 'get' && textField[1] === 'label' ? feature?.properties?.label : textField;
+    }
 
     tooltip = {
       text: JSON.stringify({
@@ -380,7 +383,9 @@
 
   const updateSelectedLayerLabel = () => {
     if (selectedLayerId) {
-      map.setLayoutProperty(selectedLayerId, 'text-field', labelText);
+      let value = labelText;
+
+      map.setLayoutProperty(selectedLayerId, 'text-field', value);
     } 
     handleTooltipClose();
   };
