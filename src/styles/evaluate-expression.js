@@ -47,6 +47,11 @@ const evaluateExpression = ({
     )}, ${Math.round(255 * nextValue.b)}, ${nextValue.a})`;
     nextValue = convertToHsl(nextValue);
   }
+
+  if (propertyId === 'icon-image') {
+    nextValue = nextValue?.name || '';
+  }
+
   return nextValue;
 };
 

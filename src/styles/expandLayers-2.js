@@ -1,3 +1,4 @@
+import { latest } from '@mapbox/mapbox-gl-style-spec';
 import mergeWith from 'lodash.mergewith';
 import merge from 'lodash.merge';
 
@@ -110,7 +111,10 @@ export const parseConditionalExpression = value => {
         i % 2 !== 0 ? outputs.push(val) : inputs.push(val)
       );
       outputs.push(fallback);
-      const property = value[1].filter(v => v !== 'get')[0];
+      // TODO this is naive handling to get a property similar to on case expressions
+      const property = value[1]
+        .flat(Infinity)
+        .filter(v => !isExpression([v]))[0];
       properties = { [property]: inputs.flat(Infinity) };
       break;
     }
@@ -190,7 +194,18 @@ export const getPropertyCombos = properties => {
 
   helper([], 0);
 
-  combos = combos.map(arr => merge({}, ...arr));
+  // Merge and dedupe the combos
+  combos = combos
+    .map(arr => merge({}, ...arr))
+    .reduce((acc, combo) => {
+      const hasCombo = acc.find(item =>
+        Object.keys(item).every(k => combo[k] === item[k])
+      );
+      if (!hasCombo) {
+        acc.push(combo);
+      }
+      return acc;
+    }, []);
 
   return combos;
 };
@@ -218,8 +233,21 @@ const createZoomExpression = (
   zooms,
   { layerType, paintOrLayout, propertyId, value, properties }
 ) => {
-  let expression = ['interpolate', ['linear'], ['zoom']];
-  for (const zoom of zooms) {
+  const initialKey = `${paintOrLayout}_${layerType}`;
+  const propertySpec = latest[initialKey][propertyId];
+  const allowsInterpolate = propertySpec?.expression?.interpolated;
+
+  let expression = [];
+
+  if (allowsInterpolate) {
+    expression.push('interpolate', ['linear'], ['zoom']);
+  } else {
+    expression.push('step', ['zoom']);
+    zooms = [0, ...zooms];
+  }
+
+  for (let i = 0; i < zooms.length; i++) {
+    const zoom = zooms[i];
     const evaluatedExpression = createExpression({
       layerType,
       paintOrLayout,
@@ -228,8 +256,12 @@ const createZoomExpression = (
       properties,
       zoom
     });
+    if (!allowsInterpolate && zoom === 0 && i === 0) {
+      expression.push(evaluatedExpression);
+    }
     expression.push(zoom, evaluatedExpression);
   }
+
   return expression;
 };
 
@@ -297,7 +329,12 @@ export const expandLayer = layer => {
       } else {
         nextValue = createExpression(args);
       }
-      nextLayer[paintOrLayout][propertyId] = nextValue;
+      // If next value is invalid, then remove the property
+      if (nextValue === null) {
+        delete nextLayer[paintOrLayout][propertyId];
+      } else {
+        nextLayer[paintOrLayout][propertyId] = nextValue;
+      }
     }
     nextLayers.push(nextLayer);
   }
