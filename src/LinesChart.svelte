@@ -4,7 +4,7 @@
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
   import { gatherOutputs } from './gather-outputs';
-  import { expandLayers } from './styles/expandLayers';
+  import { expandLayers } from './styles/expandLayers-2';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
