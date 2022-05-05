@@ -33,6 +33,7 @@ export const isHandledScale = value => {
   return isScale && value.some(v => isHandledConditional(v));
 };
 
+// Parses a scale expression and returns all properties in nested conditionals along with relevant zooms
 export const parseScaleExpression = value => {
   const [scaleType] = value;
   let inputOutputs = [];
@@ -91,6 +92,7 @@ const parseCaseCondition = value => {
   return { [property]: inputs };
 };
 
+// Returns properties and outputs of conditional expression
 export const parseConditionalExpression = value => {
   const expressionType = value[0];
   let inputOutputs = [];
@@ -159,6 +161,7 @@ export const parseConditionalExpression = value => {
   };
 };
 
+// Gets the referenced data properties and referenced values from expressions
 export const getPropertyValues = value => {
   let zooms = [];
   let properties = {};
@@ -210,6 +213,7 @@ export const getExpandableProperties = layer => {
     });
 };
 
+// Create all possible combinations of every referenced property
 export const getPropertyCombos = properties => {
   const keys = Object.keys(properties);
   const values = Object.values(properties);
@@ -243,6 +247,7 @@ export const getPropertyCombos = properties => {
   return combos;
 };
 
+// Creates new expression for expanded layer based on the properties given
 const createExpression = ({
   layerType,
   paintOrLayout,
@@ -262,6 +267,8 @@ const createExpression = ({
   return evaluated;
 };
 
+// Creates new zoom based expression for expanded layer based on the properties given
+// Scale expressions are always on the outermost expression
 const createZoomExpression = (
   zooms,
   { layerType, paintOrLayout, propertyId, value, properties }
@@ -298,6 +305,7 @@ const createZoomExpression = (
   return expression;
 };
 
+// Creates a layer for each combination of properties referenced in previous existing layer
 export const expandLayer = layer => {
   const expandedProperties = getExpandableProperties(layer);
   if (!expandedProperties.length) return [layer];
