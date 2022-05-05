@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
-  import { expandLayers } from './styles/expandLayers-2';
+  import { expandLayers } from './styles/expandLayers';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
@@ -135,9 +135,9 @@
       {#each rects as rect} 
         <g class="tick" opacity="1" transform="translate(0,
           {yScale(rect.layer.id) + yScale.bandwidth() / 2})">
-          <text y="9">
-            {rect.layer.id}
-          </text>
+            {#each rect.layer.id.split('/') as idSection, i}
+              <text y={18 * i} x={i > 0 ? 18 : 0}>{#if i > 0}↳{/if}{idSection}</text>
+            {/each}
         </g>
       {/each}
     </g>

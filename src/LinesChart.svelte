@@ -4,7 +4,7 @@
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
   import { gatherOutputs } from './gather-outputs';
-  import { expandLayers } from './styles/expandLayers-2';
+  import { expandLayers } from './styles/expandLayers';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
@@ -242,9 +242,9 @@
       {#each layers as layer} 
         <g class="tick" opacity="1" transform="translate(0,
           {adjustedYScale(layer.id) + yScale.bandwidth() / 2})">
-          <text y="9">
-            {layer.id}
-          </text>
+            {#each layer.id.split('/') as idSection, i}
+              <text y={18 * i} x={i > 0 ? 18 : 0}>{#if i > 0}↳{/if}{idSection}</text>
+            {/each}
         </g>
       {/each}
     </g>

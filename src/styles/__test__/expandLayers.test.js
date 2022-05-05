@@ -1,1263 +1,370 @@
 import {
+  getPropertyValues,
+  parseConditionalExpression,
+  parseScaleExpression,
   expandLayer,
-  expandScaleCondtionals,
-  spreadMatchExpression,
-  expandMatchExpression,
-  expandCaseExpression,
-  nestedExpandedValuesToExpression,
-  isHandledConditional,
-  isHandledScale,
-  getExpandableProperties
+  getPropertyCombos
 } from '../expandLayers';
 
-describe('isHandledConditional', () => {
+describe('getPropertyCombos', () => {
+  let properties;
+  test('with two properties', () => {
+    properties = {
+      class: ['park', 'industrial', 'airport'],
+      size: ['small', 'medium', 'large']
+    };
+    const actual = getPropertyCombos(properties);
+    const expected = [
+      { class: 'park', size: 'small' },
+      { class: 'park', size: 'medium' },
+      { class: 'park', size: 'large' },
+      { class: 'industrial', size: 'small' },
+      { class: 'industrial', size: 'medium' },
+      { class: 'industrial', size: 'large' },
+      { class: 'airport', size: 'small' },
+      { class: 'airport', size: 'medium' },
+      { class: 'airport', size: 'large' }
+    ];
+    expect(actual).toEqual(expect.arrayContaining(expected));
+  });
+
+  test('with three properties', () => {
+    properties = {
+      class: ['park', 'industrial'],
+      size: ['small', 'large'],
+      color: ['red', 'blue']
+    };
+    const actual = getPropertyCombos(properties);
+    const expected = [
+      {
+        class: 'park',
+        size: 'small',
+        color: 'red'
+      },
+      {
+        class: 'park',
+        size: 'small',
+        color: 'blue'
+      },
+      {
+        class: 'park',
+        size: 'large',
+        color: 'red'
+      },
+      {
+        class: 'park',
+        size: 'large',
+        color: 'blue'
+      },
+      {
+        class: 'industrial',
+        size: 'small',
+        color: 'red'
+      },
+      {
+        class: 'industrial',
+        size: 'small',
+        color: 'blue'
+      },
+      {
+        class: 'industrial',
+        size: 'large',
+        color: 'red'
+      },
+      {
+        class: 'industrial',
+        size: 'large',
+        color: 'blue'
+      }
+    ];
+    expect(actual).toEqual(expect.arrayContaining(expected));
+  });
+});
+
+describe('getPropertyValues', () => {
   let expression;
-  test('returns true for valid match expression', () => {
+  test('gets property values for match', () => {
     expression = ['match', ['get', 'class'], 'grass', 'green', 'red'];
-    const actual = isHandledConditional(expression);
-    expect(actual).toBe(true);
+    const actual = getPropertyValues(expression);
+    const expected = { propertyValues: { class: ['grass'] }, zooms: [] };
+    expect(actual).toEqual(expected);
   });
-  test('returns true for valid case expression', () => {
-    expression = ['case', ['==', ['get', 'class'], 'grass'], 'green', 'red'];
-    const actual = isHandledConditional(expression);
-    expect(actual).toBe(true);
-  });
-  test('returns false for non-conditional expression', () => {
-    expression = ['literal', ['a', 'b', 'c']];
-    const actual = isHandledConditional(expression);
-    expect(actual).toBe(false);
+
+  test('gets property values for scale', () => {
+    expression = [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      3,
+      ['match', ['get', 'class'], 'grass', 'green', 'red'],
+      5,
+      ['match', ['get', 'type'], ['water', 'landmark'], 'blue', 'purple']
+    ];
+    const actual = getPropertyValues(expression);
+    const expected = {
+      propertyValues: { class: ['grass'], type: ['water', 'landmark'] },
+      zooms: [3, 5]
+    };
+    expect(actual).toEqual(expected);
   });
 });
 
-describe('isHandledScale', () => {
+describe('parseScaleExpression', () => {
   let expression;
-  test('returns true for scainterpolatee expression with match expression', () => {
+
+  test('parse scale expression', () => {
     expression = [
       'interpolate',
       ['linear'],
       ['zoom'],
       5,
-      ['match', ['get', 'class'], 'grass', 'green', 'red'],
+      ['match', ['get', 'class'], 'grass', 'green', 'purple'],
       10,
-      'red'
+      [
+        'case',
+        ['==', ['get', 'class'], 'grass'],
+        'green',
+        ['==', ['get', 'class'], 'water'],
+        'blue',
+        ['==', ['get', 'type'], 'fire'],
+        'red',
+        'black'
+      ]
     ];
-    const actual = isHandledScale(expression);
-    expect(actual).toBe(true);
-  });
-  test('returns true for interpolate expression with case expression', () => {
-    expression = [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      5,
-      ['case', ['==', ['get', 'class'], 'grass'], 'green', 'red'],
-      10,
-      'red'
-    ];
-    const actual = isHandledScale(expression);
-    expect(actual).toBe(true);
-  });
-  test('returns true for step expression with match expression', () => {
-    expression = [
-      'step',
-      ['zoom'],
-      5,
-      ['match', ['get', 'class'], 'grass', 'green', 'red'],
-      10,
-      'red'
-    ];
-    const actual = isHandledScale(expression);
-    expect(actual).toBe(true);
-  });
-  test('returns false for scale expression without conditional', () => {
-    expression = ['interpolate', ['linear'], ['zoom'], 5, 'blue', 10, 'red'];
-    const actual = isHandledScale(expression);
-    expect(actual).toBe(false);
+    const actual = parseScaleExpression(expression);
+    const expected = {
+      zooms: [5, 10],
+      outputs: ['green', 'purple', 'blue', 'red', 'black'],
+      properties: { class: ['grass', 'grass', 'water'], type: ['fire'] }
+    };
+    expect(actual).toEqual(expected);
   });
 });
 
-describe('spreadMatchExpression', () => {
-  test('spreads match expression when it matches multiple inputs to a single output', () => {
-    const matchExp = [
-      'match',
-      ['get', 'class'],
-      ['grass', 'parks'],
+describe('parseConditionalExpression', () => {
+  let expression;
+
+  test('parse match expression', () => {
+    expression = ['match', ['get', 'class'], 'grass', 'green', 'red'];
+    const actual = parseConditionalExpression(expression);
+    const expected = {
+      outputs: ['green', 'red'],
+      properties: { class: ['grass'] }
+    };
+    expect(actual).toEqual(expected);
+  });
+
+  test('parse case expression', () => {
+    expression = [
+      'case',
+      ['==', ['get', 'class'], 'grass'],
       'green',
-      'water',
+      ['==', ['get', 'class'], 'water'],
       'blue',
       'red'
     ];
+    const actual = parseConditionalExpression(expression);
 
-    const actual = spreadMatchExpression(matchExp);
-    const expected = [
+    const expected = {
+      outputs: ['green', 'blue', 'red'],
+      properties: { class: ['grass', 'water'] }
+    };
+    expect(actual).toEqual(expected);
+  });
+
+  test('parse nested match expression', () => {
+    expression = [
       'match',
       ['get', 'class'],
       'grass',
-      'green',
-      'parks',
-      'green',
-      'water',
-      'blue',
+      ['match', ['get', 'type'], 'spring', 'green', 'brown'],
       'red'
     ];
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe('getExpandableProperties', () => {
-  let layer;
-  test('returns expandable properties for layer', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'case',
-          ['==', ['get', 'class'], 'is-blue'],
-          'blue',
-          ['==', ['get', 'class'], 'is-red'],
-          'red',
-          'fallback'
-        ],
-        'fill-opacity': 1
-      }
+    const actual = parseConditionalExpression(expression);
+    const expected = {
+      outputs: ['green', 'brown', 'red'],
+      properties: { class: ['grass'], type: ['spring'] }
     };
-    const actual = getExpandableProperties(layer);
-    const expected = [
-      {
-        type: 'paint',
-        key: 'fill-color',
-        value: [
-          'case',
-          ['==', ['get', 'class'], 'is-blue'],
-          'blue',
-          ['==', ['get', 'class'], 'is-red'],
-          'red',
-          'fallback'
-        ]
-      }
-    ];
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe('nestedExpandedValuesToExpression', () => {
-  test('turns nested expanded values into a valid nested case expression', () => {
-    const nestedValues = {
-      '["==",["get","class"],"is-red"]': {
-        '["==",["get","type"],"dark"]': {
-          descriptor: '["get","class"]=="is-red"-["get","type"]=="dark"',
-          expandedValue: 'hsl(0, 100%, 20%)',
-          condition: {
-            conditionType: 'match',
-            type: 'paint',
-            key: 'fill-color',
-            input: ['get', 'type'],
-            value: 'dark'
-          },
-          allConditions: [
-            ['==', ['get', 'class'], 'is-red'],
-            ['==', ['get', 'type'], 'dark']
-          ]
-        },
-        '["==",["get","type"],"darker"]': {
-          descriptor: '["get","class"]=="is-red"-["get","type"]=="darker"',
-          expandedValue: 'hsl(0, 100%, 10%)',
-          condition: {
-            conditionType: 'match',
-            type: 'paint',
-            key: 'fill-color',
-            input: ['get', 'type'],
-            value: 'darker'
-          },
-          allConditions: [
-            ['==', ['get', 'class'], 'is-red'],
-            ['==', ['get', 'type'], 'darker']
-          ]
-        },
-        '"fallback"': {
-          descriptor: '["get","class"]=="is-red"-fallback',
-          expandedValue: 'hsl(0, 100%, 0%)',
-          condition: {
-            conditionType: 'match',
-            type: 'paint',
-            key: 'fill-color',
-            input: ['get', 'type'],
-            value: 'fallback'
-          },
-          allConditions: [['==', ['get', 'class'], 'is-red'], 'fallback']
-        }
-      },
-      '"fallback"': {
-        descriptor: 'fallback',
-        expandedValue: 'hsl(120, 100%, 20%)',
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'fallback'
-        },
-        allConditions: ['fallback']
-      }
-    };
-    const actual = nestedExpandedValuesToExpression(nestedValues);
-    const expected = [
-      'case',
-      [
-        '!=',
-        ['index-of', '["==",["get","class"],"is-red"]', ['get', 'condition']],
-        -1
-      ],
-      [
-        'case',
-        [
-          '!=',
-          ['index-of', '["==",["get","type"],"dark"]', ['get', 'condition']],
-          -1
-        ],
-        'hsl(0, 100%, 20%)',
-        [
-          '!=',
-          ['index-of', '["==",["get","type"],"darker"]', ['get', 'condition']],
-          -1
-        ],
-        'hsl(0, 100%, 10%)',
-        'hsl(0, 100%, 0%)'
-      ],
-      'hsl(120, 100%, 20%)'
-    ];
-    expect(actual).toEqual(expected);
-  });
-
-  test('returns expanded value for unnested values', () => {
-    const nestedValues = {
-      '"fallback"': {
-        descriptor: 'fallback',
-        expandedValue: 'hsl(120, 100%, 20%)',
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'fallback'
-        },
-        allConditions: ['fallback']
-      }
-    };
-    const actual = nestedExpandedValuesToExpression(nestedValues);
-    const expected = 'hsl(120, 100%, 20%)';
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe('expandMatchExpression', () => {
-  let layer;
-  let type;
-  let key;
-  let value;
-  test('expands a match expression', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'match',
-          ['get', 'class'],
-          'is-blue',
-          'hsl(240, 100%, 50%)',
-          'is-red',
-          'hsl(0, 100%, 50%)',
-          'hsl(120, 100%, 50%)'
-        ]
-      }
-    };
-    type = 'paint';
-    key = 'fill-color';
-    value = layer[type][key];
-    const actual = expandMatchExpression(layer, type, key, value);
-    const expected = [
-      {
-        descriptor: '["get","class"]=="is-blue"',
-        expandedValue: 'hsl(240, 100%, 50%)',
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-blue'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-red"',
-        expandedValue: 'hsl(0, 100%, 50%)',
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-red'
-        }
-      },
-      {
-        descriptor: 'fallback',
-        expandedValue: 'hsl(120, 100%, 50%)',
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'fallback'
-        }
-      }
-    ];
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe('expandCaseExpression', () => {
-  let layer;
-  let type;
-  let key;
-  let value;
-  test('expands a case expression', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'case',
-          ['==', ['get', 'class'], 'is-blue'],
-          'hsl(240, 100%, 50%)',
-          ['==', ['get', 'class'], 'is-red'],
-          'hsl(0, 100%, 50%)',
-          'hsl(120, 100%, 50%)'
-        ]
-      }
-    };
-    type = 'paint';
-    key = 'fill-color';
-    value = layer[type][key];
-    const actual = expandCaseExpression(layer, type, key, value);
-    const expected = [
-      {
-        descriptor: '["==",["get","class"],"is-blue"]',
-        expandedValue: 'hsl(240, 100%, 50%)',
-        condition: {
-          conditionType: 'case',
-          type: 'paint',
-          key: 'fill-color',
-          value: '["==",["get","class"],"is-blue"]'
-        }
-      },
-      {
-        descriptor: '["==",["get","class"],"is-red"]',
-        expandedValue: 'hsl(0, 100%, 50%)',
-        condition: {
-          conditionType: 'case',
-          type: 'paint',
-          key: 'fill-color',
-          value: '["==",["get","class"],"is-red"]'
-        }
-      },
-      {
-        descriptor: 'fallback',
-        expandedValue: 'hsl(120, 100%, 50%)',
-        condition: {
-          conditionType: 'case',
-          type: 'paint',
-          key: 'fill-color',
-          value: 'fallback'
-        }
-      }
-    ];
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe('expandScaleCondtionals', () => {
-  let layer;
-  let type;
-  let key;
-  let value;
-  test('expand values for simple matching match expressions in scale expression', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 50%)',
-            'is-red',
-            'hsl(0, 100%, 50%)',
-            'hsl(120, 100%, 50%)'
-          ],
-          10,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 20%)',
-            'is-red',
-            'hsl(0, 100%, 20%)',
-            'hsl(120, 100%, 20%)'
-          ]
-        ]
-      }
-    };
-    type = 'paint';
-    key = 'fill-color';
-    value = layer[type][key];
-    const actual = expandScaleCondtionals(layer, type, key, value);
-
-    const expected = [
-      {
-        descriptor: '["get","class"]=="is-blue"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(240, 100%, 50%)',
-          10,
-          'hsl(240, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-blue'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-red"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(0, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-red'
-        }
-      },
-      {
-        descriptor: 'fallback',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(120, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'fallback'
-        }
-      }
-    ];
-    expect(actual.length).toEqual(3);
-    expect(actual).toEqual(expected);
-  });
-
-  test('expand values for simple matching case expressions in scale expression', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          [
-            'case',
-            ['==', ['get', 'class'], 'is-blue'],
-            'hsl(240, 100%, 50%)',
-            ['==', ['get', 'class'], 'is-red'],
-            'hsl(0, 100%, 50%)',
-            'hsl(120, 100%, 50%)'
-          ],
-          10,
-          [
-            'case',
-            ['==', ['get', 'class'], 'is-blue'],
-            'hsl(240, 100%, 20%)',
-            ['==', ['get', 'class'], 'is-red'],
-            'hsl(0, 100%, 20%)',
-            'hsl(120, 100%, 20%)'
-          ]
-        ]
-      }
-    };
-    type = 'paint';
-    key = 'fill-color';
-    value = layer[type][key];
-    const actual = expandScaleCondtionals(layer, type, key, value);
-
-    const expected = [
-      {
-        descriptor: '["==",["get","class"],"is-blue"]',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(240, 100%, 50%)',
-          10,
-          'hsl(240, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'case',
-          type: 'paint',
-          key: 'fill-color',
-          value: '["==",["get","class"],"is-blue"]'
-        }
-      },
-      {
-        descriptor: '["==",["get","class"],"is-red"]',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(0, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'case',
-          type: 'paint',
-          key: 'fill-color',
-          value: '["==",["get","class"],"is-red"]'
-        }
-      },
-      {
-        descriptor: 'fallback',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(120, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'case',
-          type: 'paint',
-          key: 'fill-color',
-          value: 'fallback'
-        }
-      }
-    ];
-    expect(actual.length).toEqual(3);
-    expect(actual).toEqual(expected);
-  });
-
-  test('expand values for non-matching match expressions in scale expression', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 50%)',
-            'is-red',
-            'hsl(0, 100%, 50%)',
-            'hsl(120, 100%, 50%)'
-          ],
-          10,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 20%)',
-            'is-purple',
-            'hsl(320, 100%, 20%)',
-            'hsl(120, 100%, 20%)'
-          ]
-        ]
-      }
-    };
-    type = 'paint';
-    key = 'fill-color';
-    value = layer[type][key];
-    const actual = expandScaleCondtionals(layer, type, key, value);
-
-    const expected = [
-      {
-        descriptor: '["get","class"]=="is-blue"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(240, 100%, 50%)',
-          10,
-          'hsl(240, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-blue'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-red"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-red'
-        }
-      },
-      {
-        descriptor: 'fallback',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(120, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'fallback'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-purple"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(120, 100%, 50%)',
-          10,
-          'hsl(320, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-purple'
-        }
-      }
-    ];
-
-    expect(actual.length).toEqual(4);
-    expect(actual).toEqual(expected);
-  });
-
-  test('expand values for nested match expressions in scale expression', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 50%)',
-            'is-red',
-            'hsl(0, 100%, 50%)',
-            'hsl(120, 100%, 50%)'
-          ],
-          10,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 20%)',
-            'is-red',
-            [
-              'match',
-              ['get', 'type'],
-              'dark',
-              'hsl(0, 100%, 20%)',
-              'darker',
-              'hsl(0, 100%, 10%)',
-              'hsl(0, 100%, 0%)'
-            ],
-            'hsl(120, 100%, 20%)'
-          ]
-        ]
-      }
-    };
-    type = 'paint';
-    key = 'fill-color';
-    value = layer[type][key];
-    const actual = expandScaleCondtionals(layer, type, key, value);
-
-    const expected = [
-      {
-        descriptor: '["get","class"]=="is-blue"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(240, 100%, 50%)',
-          10,
-          'hsl(240, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-blue'
-        }
-      },
-      // NOTE: We should probably work to get rid of this one but it's a bit more work to parse
-      // technically this is nullified by the nested conditionals in the conditional in the other zoom output
-      // so it is the same as  '["get","class"]=="is-red"-fallback'
-      {
-        descriptor: '["get","class"]=="is-red"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(0, 0%, 0%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-red'
-        }
-      },
-      {
-        descriptor: 'fallback',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(120, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'fallback'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-red"-["get","type"]=="dark"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(0, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'type'],
-          value: 'dark'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-red"-["get","type"]=="darker"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(0, 100%, 10%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'type'],
-          value: 'darker'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-red"-fallback',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(0, 0%, 0%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'type'],
-          value: 'fallback'
-        }
-      }
-    ];
-
-    expect(actual.length).toEqual(6);
-    expect(actual).toEqual(expected);
-  });
-
-  test('expand values for match expressions in only one ouput of scale expression', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 50%)',
-            'is-red',
-            'hsl(0, 100%, 50%)',
-            'hsl(120, 100%, 50%)'
-          ],
-          10,
-          'hsl(120, 100%, 20%)'
-        ]
-      }
-    };
-    type = 'paint';
-    key = 'fill-color';
-    value = layer[type][key];
-    const actual = expandScaleCondtionals(layer, type, key, value);
-
-    const expected = [
-      {
-        descriptor: '["get","class"]=="is-blue"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(240, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-blue'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-red"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-red'
-        }
-      },
-      {
-        descriptor: 'fallback',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(120, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'fallback'
-        }
-      }
-    ];
-
-    expect(actual.length).toEqual(3);
-    expect(actual).toEqual(expected);
-  });
-
-  test('expand values for match expressions across >2 zooms', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 50%)',
-            'is-red',
-            'hsl(0, 100%, 50%)',
-            'hsl(120, 100%, 50%)'
-          ],
-          10,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 20%)',
-            'is-red',
-            'hsl(0, 100%, 20%)',
-            'hsl(120, 100%, 20%)'
-          ],
-          15,
-          [
-            'match',
-            ['get', 'class'],
-            'is-blue',
-            'hsl(240, 100%, 10%)',
-            'is-red',
-            'hsl(0, 100%, 10%)',
-            'hsl(120, 100%, 10%)'
-          ]
-        ]
-      }
-    };
-    type = 'paint';
-    key = 'fill-color';
-    value = layer[type][key];
-    const actual = expandScaleCondtionals(layer, type, key, value);
-
-    const expected = [
-      {
-        descriptor: '["get","class"]=="is-blue"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(240, 100%, 50%)',
-          10,
-          'hsl(240, 100%, 20%)',
-          15,
-          'hsl(240, 100%, 10%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-blue'
-        }
-      },
-      {
-        descriptor: '["get","class"]=="is-red"',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(0, 100%, 50%)',
-          10,
-          'hsl(0, 100%, 20%)',
-          15,
-          'hsl(0, 100%, 10%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'is-red'
-        }
-      },
-      {
-        descriptor: 'fallback',
-        expandedValue: [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          5,
-          'hsl(120, 100%, 50%)',
-          10,
-          'hsl(120, 100%, 20%)',
-          15,
-          'hsl(120, 100%, 10%)'
-        ],
-        condition: {
-          conditionType: 'match',
-          type: 'paint',
-          key: 'fill-color',
-          input: ['get', 'class'],
-          value: 'fallback'
-        }
-      }
-    ];
-
-    expect(actual.length).toEqual(3);
     expect(actual).toEqual(expected);
   });
 });
 
 describe('expandLayer', () => {
   let layer;
-  test('expands layers for simple match conditional', () => {
+  test('expands layer', () => {
     layer = {
-      id: 'my-layer',
+      id: 'test-layer-3',
       type: 'fill',
+      metadata: {},
       source: 'composite',
-      'source-layer': 'land',
+      'source-layer': 'landcover',
+      layout: {},
       paint: {
         'fill-color': [
-          'match',
-          ['get', 'class'],
-          'is-blue',
-          'blue',
-          'is-red',
-          'red',
-          'fallback'
-        ]
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          5,
+          [
+            'match',
+            ['get', 'class'],
+            ['blue', 'near-blue'],
+            'blue',
+            ['match', ['get', 'class'], 'green', 'green', 'black']
+          ],
+          10,
+          'red'
+        ],
+        'fill-opacity': [
+          'step',
+          ['zoom'],
+          0.5,
+          2,
+          ['match', ['get', 'type'], 'clear', 0.2, 1],
+          7,
+          1
+        ],
+        'fill-antialias': false
       }
     };
     const actual = expandLayer(layer);
     const expected = [
       {
-        id: 'my-layer-["get","class"]=="is-blue"',
+        id: 'test-layer-3/class=="blue"/type=="clear"',
         type: 'fill',
+        metadata: {},
         source: 'composite',
-        'source-layer': 'land',
-        paint: { 'fill-color': 'blue' },
-        metadata: {
-          parentId: 'my-layer',
-          descriptor: '["get","class"]=="is-blue"',
-          conditions: [
-            {
-              conditionType: 'match',
-              type: 'paint',
-              key: 'fill-color',
-              input: ['get', 'class'],
-              value: 'is-blue'
-            }
-          ]
+        'source-layer': 'landcover',
+        layout: {},
+        paint: {
+          'fill-color': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            'hsl(240, 100%, 50%)',
+            10,
+            'hsl(0, 100%, 50%)',
+            2,
+            'hsl(240, 100%, 50%)',
+            2.1,
+            'hsl(240, 100%, 50%)',
+            7,
+            'hsl(280, 100%, 30%)',
+            7.1,
+            'hsl(283, 100%, 29%)'
+          ],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            0.2,
+            10,
+            1,
+            2,
+            0.2,
+            2.1,
+            0.2,
+            7,
+            1,
+            7.1,
+            1
+          ],
+          'fill-antialias': false
         }
       },
       {
-        id: 'my-layer-["get","class"]=="is-red"',
+        id: 'test-layer-3/class=="near-blue"/type=="clear"',
         type: 'fill',
+        metadata: {},
         source: 'composite',
-        'source-layer': 'land',
-        paint: { 'fill-color': 'red' },
-        metadata: {
-          parentId: 'my-layer',
-          descriptor: '["get","class"]=="is-red"',
-          conditions: [
-            {
-              conditionType: 'match',
-              type: 'paint',
-              key: 'fill-color',
-              input: ['get', 'class'],
-              value: 'is-red'
-            }
-          ]
+        'source-layer': 'landcover',
+        layout: {},
+        paint: {
+          'fill-color': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            'hsl(240, 100%, 50%)',
+            10,
+            'hsl(0, 100%, 50%)',
+            2,
+            'hsl(240, 100%, 50%)',
+            2.1,
+            'hsl(240, 100%, 50%)',
+            7,
+            'hsl(280, 100%, 30%)',
+            7.1,
+            'hsl(283, 100%, 29%)'
+          ],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            0.2,
+            10,
+            1,
+            2,
+            0.2,
+            2.1,
+            0.2,
+            7,
+            1,
+            7.1,
+            1
+          ],
+          'fill-antialias': false
         }
       },
       {
-        id: 'my-layer-fallback',
+        id: 'test-layer-3/class=="green"/type=="clear"',
         type: 'fill',
+        metadata: {},
         source: 'composite',
-        'source-layer': 'land',
-        paint: { 'fill-color': 'fallback' },
-        metadata: {
-          parentId: 'my-layer',
-          descriptor: 'fallback',
-          conditions: [
-            {
-              conditionType: 'match',
-              type: 'paint',
-              key: 'fill-color',
-              input: ['get', 'class'],
-              value: 'fallback'
-            }
-          ]
+        'source-layer': 'landcover',
+        layout: {},
+        paint: {
+          'fill-color': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            'hsl(120, 100%, 25%)',
+            10,
+            'hsl(0, 100%, 50%)',
+            2,
+            'hsl(120, 100%, 25%)',
+            2.1,
+            'hsl(120, 100%, 25%)',
+            7,
+            'hsl(45, 100%, 20%)',
+            7.1,
+            'hsl(41, 100%, 21%)'
+          ],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            0.2,
+            10,
+            1,
+            2,
+            0.2,
+            2.1,
+            0.2,
+            7,
+            1,
+            7.1,
+            1
+          ],
+          'fill-antialias': false
         }
       }
     ];
-
-    expect(actual).toEqual(expected);
-  });
-
-  test('expands layers for simple case conditional', () => {
-    layer = {
-      id: 'my-layer',
-      type: 'fill',
-      source: 'composite',
-      'source-layer': 'land',
-      paint: {
-        'fill-color': [
-          'case',
-          ['==', ['get', 'class'], 'is-blue'],
-          'blue',
-          ['==', ['get', 'class'], 'is-red'],
-          'red',
-          'fallback'
-        ]
-      }
-    };
-    const actual = expandLayer(layer);
-    const expected = [
-      {
-        id: 'my-layer-["==",["get","class"],"is-blue"]',
-        type: 'fill',
-        source: 'composite',
-        'source-layer': 'land',
-        paint: { 'fill-color': 'blue' },
-        metadata: {
-          parentId: 'my-layer',
-          descriptor: '["==",["get","class"],"is-blue"]',
-          conditions: [
-            {
-              conditionType: 'case',
-              type: 'paint',
-              key: 'fill-color',
-              value: '["==",["get","class"],"is-blue"]'
-            }
-          ]
-        }
-      },
-      {
-        id: 'my-layer-["==",["get","class"],"is-red"]',
-        type: 'fill',
-        source: 'composite',
-        'source-layer': 'land',
-        paint: { 'fill-color': 'red' },
-        metadata: {
-          parentId: 'my-layer',
-          descriptor: '["==",["get","class"],"is-red"]',
-          conditions: [
-            {
-              conditionType: 'case',
-              type: 'paint',
-              key: 'fill-color',
-              value: '["==",["get","class"],"is-red"]'
-            }
-          ]
-        }
-      },
-      {
-        id: 'my-layer-fallback',
-        type: 'fill',
-        source: 'composite',
-        'source-layer': 'land',
-        paint: { 'fill-color': 'fallback' },
-        metadata: {
-          parentId: 'my-layer',
-          descriptor: 'fallback',
-          conditions: [
-            {
-              conditionType: 'case',
-              type: 'paint',
-              key: 'fill-color',
-              value: 'fallback'
-            }
-          ]
-        }
-      }
-    ];
-
     expect(actual).toEqual(expected);
   });
 });

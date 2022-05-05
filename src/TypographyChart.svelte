@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import mapboxGl from 'mapbox-gl';
   import { getValue as getInterpolatedValue } from './interpolation';
-  import { expandLayers } from './styles/expandLayers-2';
+  import { expandLayers } from './styles/expandLayers';
   import Tooltip from './Tooltip.svelte';
 
   export let style;
