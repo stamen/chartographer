@@ -6,87 +6,15 @@ import {
   getPropertyCombos
 } from '../expandLayers';
 
-describe('getPropertyCombos', () => {
-  let properties;
-  test('with two properties', () => {
-    properties = {
-      class: ['park', 'industrial', 'airport'],
-      size: ['small', 'medium', 'large']
-    };
-    const actual = getPropertyCombos(properties);
-    const expected = [
-      { class: 'park', size: 'small' },
-      { class: 'park', size: 'medium' },
-      { class: 'park', size: 'large' },
-      { class: 'industrial', size: 'small' },
-      { class: 'industrial', size: 'medium' },
-      { class: 'industrial', size: 'large' },
-      { class: 'airport', size: 'small' },
-      { class: 'airport', size: 'medium' },
-      { class: 'airport', size: 'large' }
-    ];
-    expect(actual).toEqual(expect.arrayContaining(expected));
-  });
-
-  test('with three properties', () => {
-    properties = {
-      class: ['park', 'industrial'],
-      size: ['small', 'large'],
-      color: ['red', 'blue']
-    };
-    const actual = getPropertyCombos(properties);
-    const expected = [
-      {
-        class: 'park',
-        size: 'small',
-        color: 'red'
-      },
-      {
-        class: 'park',
-        size: 'small',
-        color: 'blue'
-      },
-      {
-        class: 'park',
-        size: 'large',
-        color: 'red'
-      },
-      {
-        class: 'park',
-        size: 'large',
-        color: 'blue'
-      },
-      {
-        class: 'industrial',
-        size: 'small',
-        color: 'red'
-      },
-      {
-        class: 'industrial',
-        size: 'small',
-        color: 'blue'
-      },
-      {
-        class: 'industrial',
-        size: 'large',
-        color: 'red'
-      },
-      {
-        class: 'industrial',
-        size: 'large',
-        color: 'blue'
-      }
-    ];
-    expect(actual).toEqual(expect.arrayContaining(expected));
-  });
-});
-
 describe('getPropertyValues', () => {
   let expression;
   test('gets property values for match', () => {
     expression = ['match', ['get', 'class'], 'grass', 'green', 'red'];
     const actual = getPropertyValues(expression);
-    const expected = { propertyValues: { class: ['grass'] }, zooms: [] };
+    const expected = {
+      propertyValues: { class: ['grass', 'FALLBACK'] },
+      zooms: []
+    };
     expect(actual).toEqual(expected);
   });
 
@@ -102,7 +30,10 @@ describe('getPropertyValues', () => {
     ];
     const actual = getPropertyValues(expression);
     const expected = {
-      propertyValues: { class: ['grass'], type: ['water', 'landmark'] },
+      propertyValues: {
+        class: ['grass', 'FALLBACK'],
+        type: ['water', 'landmark', 'FALLBACK']
+      },
       zooms: [3, 5]
     };
     expect(actual).toEqual(expected);
@@ -230,7 +161,7 @@ describe('expandLayer', () => {
     const actual = expandLayer(layer);
     const expected = [
       {
-        id: 'test-layer-3/class=="blue"/type=="clear"',
+        id: 'test-layer-3/class: "blue"/type: "clear"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -275,7 +206,52 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class=="near-blue"/type=="clear"',
+        id: 'test-layer-3/class: "blue"/type: "FALLBACK"',
+        type: 'fill',
+        metadata: {},
+        source: 'composite',
+        'source-layer': 'landcover',
+        layout: {},
+        paint: {
+          'fill-color': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            'hsl(240, 100%, 50%)',
+            10,
+            'hsl(0, 100%, 50%)',
+            2,
+            'hsl(240, 100%, 50%)',
+            2.1,
+            'hsl(240, 100%, 50%)',
+            7,
+            'hsl(280, 100%, 30%)',
+            7.1,
+            'hsl(283, 100%, 29%)'
+          ],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            1,
+            10,
+            1,
+            2,
+            1,
+            2.1,
+            1,
+            7,
+            1,
+            7.1,
+            1
+          ],
+          'fill-antialias': false
+        }
+      },
+      {
+        id: 'test-layer-3/class: "near-blue"/type: "clear"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -320,7 +296,52 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class=="green"/type=="clear"',
+        id: 'test-layer-3/class: "near-blue"/type: "FALLBACK"',
+        type: 'fill',
+        metadata: {},
+        source: 'composite',
+        'source-layer': 'landcover',
+        layout: {},
+        paint: {
+          'fill-color': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            'hsl(240, 100%, 50%)',
+            10,
+            'hsl(0, 100%, 50%)',
+            2,
+            'hsl(240, 100%, 50%)',
+            2.1,
+            'hsl(240, 100%, 50%)',
+            7,
+            'hsl(280, 100%, 30%)',
+            7.1,
+            'hsl(283, 100%, 29%)'
+          ],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            1,
+            10,
+            1,
+            2,
+            1,
+            2.1,
+            1,
+            7,
+            1,
+            7.1,
+            1
+          ],
+          'fill-antialias': false
+        }
+      },
+      {
+        id: 'test-layer-3/class: "green"/type: "clear"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -356,6 +377,141 @@ describe('expandLayer', () => {
             0.2,
             2.1,
             0.2,
+            7,
+            1,
+            7.1,
+            1
+          ],
+          'fill-antialias': false
+        }
+      },
+      {
+        id: 'test-layer-3/class: "green"/type: "FALLBACK"',
+        type: 'fill',
+        metadata: {},
+        source: 'composite',
+        'source-layer': 'landcover',
+        layout: {},
+        paint: {
+          'fill-color': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            'hsl(120, 100%, 25%)',
+            10,
+            'hsl(0, 100%, 50%)',
+            2,
+            'hsl(120, 100%, 25%)',
+            2.1,
+            'hsl(120, 100%, 25%)',
+            7,
+            'hsl(45, 100%, 20%)',
+            7.1,
+            'hsl(41, 100%, 21%)'
+          ],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            1,
+            10,
+            1,
+            2,
+            1,
+            2.1,
+            1,
+            7,
+            1,
+            7.1,
+            1
+          ],
+          'fill-antialias': false
+        }
+      },
+      {
+        id: 'test-layer-3/class: "FALLBACK"/type: "clear"',
+        type: 'fill',
+        metadata: {},
+        source: 'composite',
+        'source-layer': 'landcover',
+        layout: {},
+        paint: {
+          'fill-color': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            'hsl(0, 0%, 0%)',
+            10,
+            'hsl(0, 100%, 50%)',
+            2,
+            'hsl(0, 0%, 0%)',
+            2.1,
+            'hsl(0, 0%, 0%)',
+            7,
+            'hsl(0, 100%, 20%)',
+            7.1,
+            'hsl(0, 100%, 21%)'
+          ],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            0.2,
+            10,
+            1,
+            2,
+            0.2,
+            2.1,
+            0.2,
+            7,
+            1,
+            7.1,
+            1
+          ],
+          'fill-antialias': false
+        }
+      },
+      {
+        id: 'test-layer-3/class: "FALLBACK"/type: "FALLBACK"',
+        type: 'fill',
+        metadata: {},
+        source: 'composite',
+        'source-layer': 'landcover',
+        layout: {},
+        paint: {
+          'fill-color': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            'hsl(0, 0%, 0%)',
+            10,
+            'hsl(0, 100%, 50%)',
+            2,
+            'hsl(0, 0%, 0%)',
+            2.1,
+            'hsl(0, 0%, 0%)',
+            7,
+            'hsl(0, 100%, 20%)',
+            7.1,
+            'hsl(0, 100%, 21%)'
+          ],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            1,
+            10,
+            1,
+            2,
+            1,
+            2.1,
+            1,
             7,
             1,
             7.1,

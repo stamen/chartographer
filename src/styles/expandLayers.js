@@ -1,3 +1,4 @@
+import cartesian from 'cartesian';
 import { latest } from '@mapbox/mapbox-gl-style-spec';
 import mergeWith from 'lodash.mergewith';
 import merge from 'lodash.merge';
@@ -213,42 +214,8 @@ export const getExpandableProperties = layer => {
     });
 };
 
-// Create all possible combinations of every referenced property
-export const getPropertyCombos = properties => {
-  const keys = Object.keys(properties);
-  const values = Object.values(properties);
-  let combos = [];
-  const max = keys.length - 1;
-
-  const helper = (arr, i) => {
-    for (let j = 0; j < values[i].length; j++) {
-      const a = arr.slice(0); // clone arr
-      a.push({ [keys[i]]: values[i][j] });
-      if (i === max) combos.push(a);
-      else helper(a, i + 1);
-    }
-  };
-
-  helper([], 0);
-
-  // Merge and dedupe the combos
-  combos = combos
-    .map(arr => merge({}, ...arr))
-    .reduce((acc, combo) => {
-      const hasCombo = acc.find(item =>
-        Object.keys(item).every(k => combo[k] === item[k])
-      );
-      if (!hasCombo) {
-        acc.push(combo);
-      }
-      return acc;
-    }, []);
-
-  return combos;
-};
-
 // Creates new expression for expanded layer based on the properties given
-const createExpression = ({
+const evaluateExpressionForProperties = ({
   layerType,
   paintOrLayout,
   propertyId,
@@ -269,7 +236,7 @@ const createExpression = ({
 
 // Creates new zoom based expression for expanded layer based on the properties given
 // Scale expressions are always on the outermost expression
-const createZoomExpression = (
+const createEvaluatedZoomExpression = (
   zooms,
   { layerType, paintOrLayout, propertyId, value, properties }
 ) => {
@@ -288,7 +255,7 @@ const createZoomExpression = (
 
   for (let i = 0; i < zooms.length; i++) {
     const zoom = zooms[i];
-    const evaluatedExpression = createExpression({
+    const evaluatedExpression = evaluateExpressionForProperties({
       layerType,
       paintOrLayout,
       propertyId,
@@ -341,7 +308,7 @@ export const expandLayer = layer => {
     zooms = [...new Set(zooms.concat(propertyZooms))];
   });
 
-  const propertyCombos = getPropertyCombos(properties);
+  const propertyCombos = cartesian(properties);
 
   let nextLayers = [];
 
@@ -368,9 +335,9 @@ export const expandLayer = layer => {
       };
 
       if (zooms.length) {
-        nextValue = createZoomExpression(zooms, args);
+        nextValue = createEvaluatedZoomExpression(zooms, args);
       } else {
-        nextValue = createExpression(args);
+        nextValue = evaluateExpressionForProperties(args);
       }
       // If next value is invalid, then remove the property
       if (nextValue === null) {
