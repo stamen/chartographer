@@ -308,7 +308,18 @@ export const expandLayer = layer => {
     zooms = [...new Set(zooms.concat(propertyZooms))];
   });
 
-  const propertyCombos = cartesian(properties);
+  let propertyCombos = cartesian(properties);
+
+  // Dedupe the combos
+  propertyCombos = propertyCombos.reduce((acc, combo) => {
+    const hasCombo = acc.find(item =>
+      Object.keys(item).every(k => combo[k] === item[k])
+    );
+    if (!hasCombo) {
+      acc.push(combo);
+    }
+    return acc;
+  }, []);
 
   let nextLayers = [];
 
