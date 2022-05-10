@@ -296,7 +296,7 @@
           'text-allow-overlap': true,
         };
 
-        if (layer.layout['text-field']) {
+        if (layer.layout['text-field'] && layer.layout['text-field'][0] !== 'format') {
           layout['text-field'] = ['get', 'label'];
         }
       }
