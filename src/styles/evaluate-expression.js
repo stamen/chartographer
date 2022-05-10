@@ -48,8 +48,12 @@ const evaluateExpression = ({
     nextValue = convertToHsl(nextValue);
   }
 
-  if (propertyId === 'icon-image') {
+  // TODO Find proper way to resolve these conditionals from style spec
+  if (propertyId === 'icon-image' && nextValue.hasOwnProperty('name')) {
     nextValue = nextValue?.name || '';
+  }
+  if (propertyId === 'text-field' && nextValue.hasOwnProperty('sections')) {
+    nextValue = nextValue.sections.map(item => item.text).join('');
   }
 
   return nextValue;

@@ -157,6 +157,7 @@ export const parseConditionalExpression = value => {
   }
 
   return {
+    inputs,
     outputs: [...new Set(outputs)],
     properties
   };
@@ -214,6 +215,14 @@ export const getExpandableProperties = layer => {
     });
 };
 
+// Returns an expression with non-conditional `get` expressions replaced by the name of the property as a string
+// The property list contains all get expressions that are relevant to the conditions
+const replaceInternalGets = (value, propertyList) => {
+  if (!Array.isArray(value)) return value;
+  if (value[0] === 'get' && !propertyList.includes(value[1])) return value[1];
+  return value.map(v => replaceInternalGets(v, propertyList));
+};
+
 // Creates new expression for expanded layer based on the properties given
 const evaluateExpressionForProperties = ({
   layerType,
@@ -223,6 +232,9 @@ const evaluateExpressionForProperties = ({
   properties,
   zoom
 }) => {
+  if (propertyId === 'text-field') {
+    value = replaceInternalGets(value, Object.keys(properties));
+  }
   const evaluated = evaluateExpression({
     layerType,
     propertyType: paintOrLayout,
