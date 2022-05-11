@@ -1,176 +1,387 @@
+import cartesian from 'cartesian';
+import { latest } from '@mapbox/mapbox-gl-style-spec';
+import mergeWith from 'lodash.mergewith';
+import merge from 'lodash.merge';
 
-const getExpandableProperties = layer => {
+import { expression } from '@mapbox/mapbox-gl-style-spec';
+const { isExpression } = expression;
+import { evaluateExpression } from './evaluate-expression';
+
+const FALLBACKS = {
+  string: 'FALLBACK',
+  number: -1000,
+  array: [],
+  object: {},
+  boolean: false
+};
+
+const mergeWithCustomizer = (objValue, srcValue) => {
+  if (Array.isArray(objValue)) {
+    return objValue.concat(srcValue);
+  }
+};
+
+export const isHandledConditional = value => {
+  if (!Array.isArray(value)) return false;
+  return value[0] === 'match' || value[0] === 'case';
+};
+
+export const isHandledScale = value => {
+  const isInterpolate =
+    value[0] === 'interpolate' && value?.[2]?.[0] === 'zoom';
+  const isStep = value[0] === 'step' && value?.[1]?.[0] === 'zoom';
+  const isScale = isInterpolate || isStep;
+  return isScale && value.some(v => isHandledConditional(v));
+};
+
+// Parses a scale expression and returns all properties in nested conditionals along with relevant zooms
+export const parseScaleExpression = value => {
+  const [scaleType] = value;
+  let inputOutputs = [];
+  let zooms = [];
+  let scaleOutputs = [];
+  let outputs = [];
+  let properties = {};
+
+  // Pull out outputs and zooms from interpolation
+  switch (scaleType) {
+    case 'interpolate':
+    case 'interpolate-hcl':
+    case 'interpolate-lab': {
+      inputOutputs = value.slice(3);
+      inputOutputs.forEach((val, i) =>
+        i % 2 !== 0 ? scaleOutputs.push(val) : zooms.push(val)
+      );
+      break;
+    }
+    case 'step': {
+      inputOutputs = value.slice(2);
+      inputOutputs.forEach((val, i) =>
+        i % 2 === 0 ? scaleOutputs.push(val) : zooms.push(val)
+      );
+      break;
+    }
+  }
+  for (const scaleOutput of scaleOutputs) {
+    if (isHandledConditional(scaleOutput)) {
+      const { outputs: scaleOutputs, properties: scaleProperties } =
+        parseConditionalExpression(scaleOutput);
+      outputs = [...new Set(outputs.concat(scaleOutputs))];
+      properties = mergeWith(properties, scaleProperties, mergeWithCustomizer);
+    }
+  }
+  return { zooms, outputs, properties };
+};
+
+// TODO this needs to be a little more advanced
+// assumes one property for now
+const parseCaseCondition = value => {
+  const flatValue = value.flat(Infinity);
+  const lookups = ['get', 'has', 'in'];
+  const properties = flatValue.filter(
+    (item, i) => i !== 0 && lookups.includes(flatValue[i - 1])
+  );
+  // Just first one for now assuming 1
+  const property = properties[0];
+  let inputs = flatValue.filter(
+    item => !properties.includes(item) && !isExpression([item])
+  );
+  // This is a hack for ref length we should handle better
+  if (flatValue.includes('length') && properties.length === 1) {
+    inputs = inputs.map(num => `${num}`.repeat(num));
+  }
+  return { [property]: inputs };
+};
+
+// Returns properties and outputs of conditional expression
+export const parseConditionalExpression = value => {
+  const expressionType = value[0];
+  let inputOutputs = [];
+  let inputs = [];
+  let outputs = [];
+  let properties = {};
+
+  switch (expressionType) {
+    case 'case': {
+      inputOutputs = value.slice(1);
+      let caseInputs = [];
+      const fallback = inputOutputs.pop();
+      inputOutputs.forEach((val, i) =>
+        i % 2 !== 0 ? outputs.push(val) : caseInputs.push(val)
+      );
+      outputs.push(fallback);
+
+      caseInputs.forEach(input => {
+        const caseProperties = parseCaseCondition(input);
+        inputs = inputs.concat(caseInputs);
+        properties = mergeWith(properties, caseProperties, mergeWithCustomizer);
+      });
+
+      break;
+    }
+    case 'match': {
+      inputOutputs = value.slice(2);
+      const fallback = inputOutputs.pop();
+      inputOutputs.forEach((val, i) =>
+        i % 2 !== 0 ? outputs.push(val) : inputs.push(val)
+      );
+      outputs.push(fallback);
+
+      const flatCondition = value[1].flat(Infinity);
+      // TODO this is naive handling to get a property similar to on case expressions
+      const property = flatCondition.filter(v => !isExpression([v]))[0];
+
+      // This is a hack for ref length we should handle better
+      if (flatCondition.includes('length')) {
+        inputs = inputs.map(num => `${num}`.repeat(num));
+      }
+
+      properties = { [property]: inputs.flat(Infinity) };
+      break;
+    }
+  }
+
+  for (let i = 0; i < outputs.length; i++) {
+    const output = outputs[i];
+    if (isHandledConditional(output)) {
+      const {
+        inputs: nestedInputs,
+        outputs: nestedOutputs,
+        properties: nestedProperties
+      } = parseConditionalExpression(output);
+
+      outputs.splice(i, 1, ...nestedOutputs);
+      inputs = inputs.concat(nestedInputs);
+      properties = mergeWith(properties, nestedProperties, mergeWithCustomizer);
+    }
+  }
+
+  return {
+    inputs,
+    outputs: [...new Set(outputs)],
+    properties
+  };
+};
+
+// Gets the referenced data properties and referenced values from expressions
+export const getPropertyValues = value => {
+  let zooms = [];
+  let properties = {};
+  if (isHandledScale(value)) {
+    ({ zooms, properties } = parseScaleExpression(value));
+  } else {
+    ({ properties } = parseConditionalExpression(value));
+  }
+
+  // TODO can we make this more reliable? Sets fallback based on type of value
+  // If this causes problems, we may be better without fallbacks
+  // Note: fallbacks defined are _likely_ fallback property values, but not guaranteed based on expression
+  properties = Object.keys(properties).reduce((acc, prop) => {
+    let valueType = typeof properties[prop][0];
+    if (valueType === 'object' && Array.isArray(valueType)) {
+      valueType = 'array';
+    }
+    acc[prop] =
+      valueType !== undefined
+        ? properties[prop].concat([FALLBACKS[valueType]])
+        : properties[prop];
+    return acc;
+  }, {});
+
+  return {
+    propertyValues: properties,
+    zooms
+  };
+};
+
+export const getExpandableProperties = layer => {
   return ['paint', 'layout']
     .map(type => {
       if (!layer[type]) return [];
       return Object.entries(layer[type])
-	.map(([key, value]) => {
-	  if (value[0] === 'case') return { type, key, value };
-	  if (value[0] === 'match') return { type, key, value };
-	})
-	.filter(v => v);
+        .map(([key, value]) => {
+          if (isHandledConditional(value)) return { type, key, value };
+          if (isHandledScale(value)) {
+            return { type, key, value };
+          }
+        })
+        .filter(v => v);
     })
     .filter(v => v.length)
-    .reduce((agg, current) => agg.concat(current), []);
+    .reduce((agg, current) => agg.concat(current), [])
+    .map(v => {
+      const { propertyValues, zooms } = getPropertyValues(v.value);
+      return { ...v, properties: propertyValues, zooms };
+    });
 };
 
+// Returns an expression with non-conditional `get` expressions replaced by the name of the property as a string
+// The property list contains all get expressions that are relevant to the conditions
+const replaceInternalGets = (value, propertyList) => {
+  if (!Array.isArray(value)) return value;
+  if (value[0] === 'get' && !propertyList.includes(value[1])) return value[1];
+  return value.map(v => replaceInternalGets(v, propertyList));
+};
 
-/**
- * Expand a case expression to all the possible values the case could output
- *
- * @param {string} type - 'layout' or 'paint'
- * @param {string} key - the property name
- * @param {Array} expression - the expression
- * @returns {Array} the expanded values
- */
-const expandCaseExpression = (type, key, expression) => {
-  const [expressionType, ...cases] = expression;
-  let expandedValues = [];
+// Creates new expression for expanded layer based on the properties given
+const evaluateExpressionForProperties = ({
+  layerType,
+  paintOrLayout,
+  propertyId,
+  value,
+  properties,
+  zoom
+}) => {
+  if (propertyId === 'text-field') {
+    value = replaceInternalGets(value, Object.keys(properties));
+  }
+  const evaluated = evaluateExpression({
+    layerType,
+    propertyType: paintOrLayout,
+    propertyId,
+    properties,
+    value,
+    zoom
+  });
+  return evaluated;
+};
 
-  for (let i = 0; i < cases.length; i += 2) {
-    let descriptor = JSON.stringify(cases[i]);
-    let output = cases[i + 1];
-    if (i === cases.length - 1) {
-      descriptor = 'fallback';
-      output = cases[i];
+// Creates new zoom based expression for expanded layer based on the properties given
+// Scale expressions are always on the outermost expression
+const createEvaluatedZoomExpression = (
+  zooms,
+  { layerType, paintOrLayout, propertyId, value, properties }
+) => {
+  const initialKey = `${paintOrLayout}_${layerType}`;
+  const propertySpec = latest[initialKey][propertyId];
+  const allowsInterpolate = propertySpec?.expression?.interpolated;
+
+  let expression = [];
+
+  if (allowsInterpolate) {
+    expression.push('interpolate', ['linear'], ['zoom']);
+  } else {
+    expression.push('step', ['zoom']);
+    zooms = [0, ...zooms];
+  }
+
+  for (let i = 0; i < zooms.length; i++) {
+    const zoom = zooms[i];
+    const evaluatedExpression = evaluateExpressionForProperties({
+      layerType,
+      paintOrLayout,
+      propertyId,
+      value,
+      properties,
+      zoom
+    });
+    if (!allowsInterpolate && zoom === 0 && i === 0) {
+      expression.push(evaluatedExpression);
     }
-    expandedValues.push({
-      descriptor,
-      expandedValue: output,
-      condition: {
-	conditionType: 'case',
-	type,
-	key,
-	value: descriptor
-      }
-    });
+    expression.push(zoom, evaluatedExpression);
   }
-  return expandedValues;
+
+  return expression;
 };
 
+// Creates a layer for each combination of properties referenced in previous existing layer
+export const expandLayer = layer => {
+  const expandedProperties = getExpandableProperties(layer);
+  if (!expandedProperties.length) return [layer];
+  let zooms = [];
+  let propertyPaths = [];
+  let properties = {};
 
-/**
- * Expand a match expression to all the possible values the match could output
- *
- * @param {string} layer - the layer the expression is part of
- * @param {string} type - 'layout' or 'paint'
- * @param {string} key - the property name
- * @param {string} expression - the expression
- * @returns {Array} the expanded values
- */
-const expandMatchExpression = (layer, type, key, expression) => {
-  const [expressionType, input, ...matches] = expression;
-  let expandedValues = [];
+  expandedProperties.forEach(property => {
+    let {
+      type: propertyType,
+      key: propertyId,
+      properties: propertyData,
+      value: propertyValue,
+      zooms: propertyZooms
+    } = property;
 
-  for (let i = 0; i < matches.length; i += 2) {
-    let matchSeekValue = matches[i];
-    let output = matches[i + 1];
+    propertyPaths.push([propertyType, propertyId]);
+    properties = mergeWith(properties, propertyData, mergeWithCustomizer);
 
-    let descriptor = [
-      JSON.stringify(input),
-      JSON.stringify(matchSeekValue),
-    ].join('==');
-
-    if (i === matches.length - 1) {
-      descriptor = matchSeekValue = 'fallback';
-      output = matches[i];
+    // Add zooms 0.1 after actual zooms for step functions so that
+    // we can safely create interpolate functions that look like step functions
+    // TODO this is naive handling and doesn't account for exponential functions
+    if (propertyZooms.length) {
+      const scaleType = propertyValue[0];
+      if (scaleType === 'step') {
+        propertyZooms = propertyZooms.reduce((acc, z) => {
+          acc.push(z, z + 0.1);
+          return acc;
+        }, []);
+      }
     }
 
-    // Look at layer metadata to see if matches traversed thus far are
-    // mutually exclusive to this candidate layer. If so, don't add this
-    // layer.
-    const existingMatches = layer?.metadata?.conditions ?? [];
-    const existingMatchesAreMutuallyExclusive = existingMatches.some(otherMatch => {
-      if (JSON.stringify(input) !== JSON.stringify(otherMatch.input)) return false;
-      if (Array.isArray(matchSeekValue) && Array.isArray(otherMatch.value)) {
-	return !matchSeekValue.some(v => otherMatch.value.indexOf(v) >= 0);
+    zooms = [...new Set(zooms.concat(propertyZooms))];
+  });
+
+  let propertyCombos = cartesian(properties);
+
+  // Dedupe the combos
+  propertyCombos = propertyCombos.reduce((acc, combo) => {
+    const hasCombo = acc.find(item =>
+      Object.keys(item).every(k => combo[k] === item[k])
+    );
+    if (!hasCombo) {
+      acc.push(combo);
+    }
+    return acc;
+  }, []);
+
+  let nextLayers = [];
+
+  for (const combo of propertyCombos) {
+    const nextLayer = JSON.parse(JSON.stringify(layer));
+
+    let nextId = Object.keys(combo).reduce((acc, prop) => {
+      const propValue =
+        FALLBACKS[combo[prop]] !== undefined ? 'FALLBACK' : combo[prop];
+      acc.push([prop, ': ', JSON.stringify(propValue)].join(''));
+      return acc;
+    }, []);
+    nextId = `${nextLayer.id}/${nextId.join('/')}`;
+    nextLayer.id = nextId;
+    for (const path of propertyPaths) {
+      const [paintOrLayout, propertyId] = path;
+      let nextValue = nextLayer[paintOrLayout][propertyId];
+      const args = {
+        layerType: layer.type,
+        paintOrLayout,
+        propertyId,
+        value: nextValue,
+        properties: combo
+      };
+
+      if (zooms.length) {
+        nextValue = createEvaluatedZoomExpression(zooms, args);
+      } else {
+        nextValue = evaluateExpressionForProperties(args);
       }
-      return matchSeekValue !== otherMatch.value;
-    });
-
-    if (existingMatchesAreMutuallyExclusive) continue;
-
-    expandedValues.push({
-      descriptor,
-      expandedValue: output,
-      condition: {
-	conditionType: 'match',
-	type,
-	key,
-	input,
-	value: matchSeekValue
+      // If next value is invalid, then remove the property
+      if (nextValue === null) {
+        delete nextLayer[paintOrLayout][propertyId];
+      } else {
+        nextLayer[paintOrLayout][propertyId] = nextValue;
       }
-    });
+    }
+    nextLayers.push(nextLayer);
   }
 
-  return expandedValues;
-}
-
-/**
- * Expand a layer based on case and match expressions.
- *
- * The hope here is to get a series of valid layers for styling, where we
- * account for case and match expressions. For example, if a layer has a case
- * expression with two cases and a fallback, that layer will be expanded to
- * three separate layers, where each has the specific value for the case or
- * fallback that is relevant to it.
- */
-const expandLayer = layer => {
-  let expandedValues = [];
-
-  const expandableProperties = getExpandableProperties(layer);
-  if (expandableProperties.length === 0) return [layer];
-
-  const { type, key, value } = expandableProperties[0];
-
-  switch (value[0]) {
-    case 'case':
-      expandedValues = expandCaseExpression(type, key, value);
-      break;
-    case 'match':
-      expandedValues = expandMatchExpression(layer, type, key, value);
-      break;
-    default:
-      break;
-  }
-
-  if (expandedValues.length > 0) {
-    // For each value to expand, create a new layer with that value, then
-    // recurse to further expand the layer, if necessary
-    return expandedValues
-      .map(({ descriptor, expandedValue, condition }) => {
-	let combinedDescriptor = descriptor;
-	if (layer?.metadata?.descriptor) {
-	  combinedDescriptor = `${layer.metadata.descriptor} > ${descriptor}`;
-	}
-
-	let conditions = [...layer?.metadata?.conditions ?? []];
-	if (condition) conditions.push(condition);
-
-	const newLayer = {
-	  ...layer,
-	  id: `${layer.id}-${descriptor}`,
-	  metadata: {
-	    parentId: layer?.metadata?.parentId ?? layer.id,
-	    descriptor: combinedDescriptor,
-	    conditions
-	  },
-	  [type]: {
-	    ...layer[type],
-	    [key]: expandedValue
-	  }
-	};
-
-	return expandLayer(newLayer);
-      })
-      .reduce((agg, current) => agg.concat(current), []);
-  }
-
-  return [layer];
-
+  return nextLayers;
 };
 
-export const expandLayers = layers => {
-  return layers.map(expandLayer)
-    .reduce((agg, current) => agg.concat(current), []);
+const expandLayers = layers => {
+  const nextLayers = layers.reduce((acc, l) => {
+    acc = acc.concat(expandLayer(l));
+    return acc;
+  }, []);
+
+  return nextLayers;
 };
+
+export { expandLayers };
