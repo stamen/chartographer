@@ -14,29 +14,77 @@ const handleLiteral = value => {
 };
 
 const isGradient = value => {
-  if (Array.isArray(value) && value[0] === 'interpolate') {
-    const [, [interpolationType], [attribute]] = value;
+  if (!Array.isArray(value)) return false;
 
-    if (interpolationType === 'linear' && attribute === 'zoom') {
-      return true;
+  const expressionType = value[0];
+
+  switch (expressionType) {
+    case 'step': {
+      const [, [attribute]] = value;
+      if (attribute === 'zoom') {
+        return expressionType;
+      }
+      break;
     }
+    case 'interpolate': {
+      const [, [interpolationType], [attribute]] = value;
+      if (interpolationType === 'linear' && attribute === 'zoom') {
+        return expressionType;
+      }
+      break;
+    }
+    default:
+      return false;
   }
-  return false;
 };
 
-const getGradientStops = ({ color, opacity, minZoom, maxZoom, xScale }) => {
-  const colorIsGradient = isGradient(color);
-  const opacityIsGradient = isGradient(opacity);
+const getZoomOutputArray = scaleExpression => {
+  if (!isGradient(scaleExpression)) return [];
+  const expressionType = scaleExpression[0];
+
+  if (expressionType === 'interpolate') return scaleExpression.slice(3);
+
+  // For the sake of consistent gradient handling, convert step functions
+  // to look more like interpolate functions
+  let stepZoomOutput = scaleExpression.slice(2);
+  stepZoomOutput.unshift(0.1);
+
+  stepZoomOutput = stepZoomOutput.reduce((acc, item, i) => {
+    // zoom
+    if (i % 2 === 0 && i !== 0) {
+      acc.push(Number(item) - 0.01, stepZoomOutput[i - 1]);
+      acc.push(item);
+    } // output
+    else {
+      acc.push(item);
+    }
+
+    return acc;
+  }, []);
+
+  return stepZoomOutput;
+};
+
+const getGradientStops = ({
+  layerId,
+  color,
+  opacity,
+  minZoom,
+  maxZoom,
+  xScale
+}) => {
+  const colorInterpolation = isGradient(color);
+  const opacityInterpolation = isGradient(opacity);
 
   const gradientStops = [];
 
-  if (colorIsGradient || opacityIsGradient) {
+  if (colorInterpolation || opacityInterpolation) {
     const lineStart = xScale(minZoom);
     const lineLength = xScale(maxZoom) - xScale(minZoom);
 
     opacity = opacity;
-    const gradientColorArray = colorIsGradient ? color.slice(3) : [];
-    const gradientOpacityArray = opacityIsGradient ? opacity.slice(3) : [];
+    let gradientColorArray = getZoomOutputArray(color);
+    let gradientOpacityArray = getZoomOutputArray(opacity);
 
     const stops = gradientColorArray
       .concat(gradientOpacityArray)
@@ -44,13 +92,35 @@ const getGradientStops = ({ color, opacity, minZoom, maxZoom, xScale }) => {
       .sort((a, b) => a - b);
 
     stops.forEach(zoomStop => {
-      const colorOutput = colorIsGradient
+      let colorOutput = colorInterpolation
         ? getInterpolatedValue(color, zoomStop, null)
         : color;
-      let opacityOutput = opacityIsGradient
+      let opacityOutput = opacityInterpolation
         ? getInterpolatedValue(opacity, zoomStop, null)
         : opacity;
+
+      if (Array.isArray(colorOutput)) {
+        console.warn(
+          `${layerId}: Unhandled data expression, ${JSON.stringify(
+            colorOutput,
+            null,
+            2
+          )}`
+        );
+        colorOutput = 'black';
+      }
+      if (Array.isArray(opacityOutput)) {
+        console.warn(
+          `${layerId}: Unhandled data expression, ${JSON.stringify(
+            opacityOutput,
+            null,
+            2
+          )}`
+        );
+        opacityOutput = 1;
+      }
       opacityOutput = parseFloat(opacityOutput.toFixed(2));
+
       gradientStops.push({
         offset: ((xScale(zoomStop) - lineStart) / lineLength) * 100,
         stopColor: colorOutput,
@@ -112,6 +182,7 @@ const getColor = (layer, xScale) => {
   opacity = opacity !== undefined ? handleLiteral(opacity) : 1;
 
   const gradientStops = getGradientStops({
+    layerId: layer.id,
     color,
     opacity,
     minZoom,

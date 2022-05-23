@@ -71,17 +71,29 @@ const evaluateExpression = ({
     }
   );
 
-  if (propertySpec.type === 'color') {
+  if (
+    propertySpec.type === 'color' &&
+    nextValue &&
+    nextValue.hasOwnProperty('r')
+  ) {
     nextValue = `rgba(${Math.round(255 * nextValue.r)}, ${Math.round(
       255 * nextValue.g
     )}, ${Math.round(255 * nextValue.b)}, ${nextValue.a})`;
     nextValue = convertToHsl(nextValue);
   }
 
-  if (propertyId === 'icon-image' && nextValue.hasOwnProperty('name')) {
+  if (
+    propertyId === 'icon-image' &&
+    nextValue &&
+    nextValue.hasOwnProperty('name')
+  ) {
     nextValue = serializeIconImage(nextValue);
   }
-  if (propertyId === 'text-field' && nextValue.hasOwnProperty('sections')) {
+  if (
+    propertyId === 'text-field' &&
+    nextValue &&
+    nextValue.hasOwnProperty('sections')
+  ) {
     nextValue = serializeFormatted(nextValue);
   }
 
