@@ -22,14 +22,14 @@ const isGradient = value => {
     case 'step': {
       const [, [attribute]] = value;
       if (attribute === 'zoom') {
-        return expressionType;
+        return true;
       }
       break;
     }
     case 'interpolate': {
       const [, [interpolationType], [attribute]] = value;
       if (interpolationType === 'linear' && attribute === 'zoom') {
-        return expressionType;
+        return true;
       }
       break;
     }
@@ -73,8 +73,8 @@ const getGradientStops = ({
   maxZoom,
   xScale
 }) => {
-  const colorInterpolation = isGradient(color);
-  const opacityInterpolation = isGradient(opacity);
+  const colorInterpolation = isGradient(color) && color[0];
+  const opacityInterpolation = isGradient(opacity) && opacity[0];
 
   const gradientStops = [];
 
