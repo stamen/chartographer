@@ -1,4 +1,4 @@
-# mapbox-gl-style-design-system
+# chartographer
 
 Generate visualizations of a Mapbox GL stylesheet to better understand how layers are rendered by zoom level.
 
