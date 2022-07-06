@@ -8,6 +8,7 @@
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
   import computedStyleToInlineStyle from 'computed-style-to-inline-style';
+  import { convertStylesheetToRgb } from './convert-colors'
 
   export let selectedTab;
   export let style;
@@ -65,6 +66,9 @@
     const { files } = e.dataTransfer;
     const text = await files[0].text();
     style = migrate(JSON.parse(text));
+    console.log(style)
+    style = convertStylesheetToRgb(style);
+    console.log(style)
      // On dropping in a style, switch to the fill tab to refresh background layer state
      handleTabChange({ detail: { tab: 'fill' } });
   }

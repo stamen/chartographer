@@ -42,6 +42,7 @@
     "lodash.mergewith": "^4.6.2",
     "mapbox-expression": "^0.0.3",
     "mapbox-gl": "^1.13.2",
+    "mapbox-gl-style-recurse": "github:stamen/mapbox-gl-style-recurse",
     "sirv-cli": "^1.0.0",
     "svelte-fa": "^2.4.0"
   }
