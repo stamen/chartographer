@@ -91,6 +91,10 @@
     });
     
     svg = new XMLSerializer().serializeToString(svg); 
+    // Remove single quotes for Figma
+    svg = svg.replace(/url\(([^\)]+)\)/g, match => {
+      return match.replaceAll("'", '');
+    });
     const blob = new Blob([svg]);
     const element = document.createElement("a");
     element.download = `${style.id}-${selectedTab}-chart.svg`;
