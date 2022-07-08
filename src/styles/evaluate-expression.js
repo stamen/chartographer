@@ -32,22 +32,6 @@ const serializeIconImage = resolvedImage => {
   return ['image', resolvedImage.name];
 };
 
-const convertToHsl = color => {
-  // Hue might not be necessary, but basically we want to avoid rounding alpha
-  const attrToRound = ['h', 's', 'l'];
-
-  let hslObj = Color(color).hsl().object();
-
-  hslObj = Object.keys(hslObj).reduce((acc, k) => {
-    acc[k] = attrToRound.includes(k) ? Math.round(hslObj[k]) : hslObj[k];
-    return acc;
-  }, {});
-
-  const hslColor = Color(hslObj).hsl().string();
-
-  return hslColor;
-};
-
 const evaluateExpression = ({
   layerType,
   propertyType,
@@ -79,7 +63,6 @@ const evaluateExpression = ({
     nextValue = `rgba(${Math.round(255 * nextValue.r)}, ${Math.round(
       255 * nextValue.g
     )}, ${Math.round(255 * nextValue.b)}, ${nextValue.a})`;
-    nextValue = convertToHsl(nextValue);
   }
 
   if (

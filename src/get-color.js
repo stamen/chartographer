@@ -132,6 +132,16 @@ const getGradientStops = ({
   return gradientStops;
 };
 
+const getValidGradientId = id => {
+  const invalidGradientUrlChars = ['"', ' ', "'"];
+
+  let nextId = id;
+  for (const char of invalidGradientUrlChars) {
+    nextId = nextId.replaceAll(char, '');
+  }
+  return nextId;
+};
+
 const getColor = (layer, xScale) => {
   let gradients = [];
   const minZoom = layer.minzoom || MIN_ZOOM;
@@ -191,9 +201,11 @@ const getColor = (layer, xScale) => {
   });
 
   if (gradientStops.length > 1) {
+    const gradientId = getValidGradientId(layer.id);
+
     gradients = [
       {
-        id: layer.id,
+        id: gradientId,
         stops: gradientStops.map(stop => ({
           offset: `${stop.offset}%`,
           stopColor: stop.stopColor,
@@ -202,7 +214,7 @@ const getColor = (layer, xScale) => {
       }
     ];
 
-    color = `url('#${layer.id}')`;
+    color = `url(#${gradientId})`;
   }
 
   return { gradients, color: { color, strokeColor, strokeWidth } };
