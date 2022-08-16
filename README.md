@@ -2,6 +2,8 @@
 
 Generate visualizations of a Mapbox GL stylesheet to better understand how layers are rendered by zoom level.
 
+Learn more in our blog post "[Visualize a cross section of your map with Chartographer](https://stamen.com/visualize-a-cross-section-of-your-map-with-chartographer/)"
+
 ## Develop
 
 This app uses [Svelte](https://svelte.dev/).
