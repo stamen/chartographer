@@ -1,11 +1,17 @@
+// import fastCartesian from 'fast-cartesian';
 import cartesian from 'cartesian';
 import { latest } from '@mapbox/mapbox-gl-style-spec';
 import mergeWith from 'lodash.mergewith';
-import merge from 'lodash.merge';
+import { propertyValueComboLimitStore } from '../stores';
 
 import { expression } from '@mapbox/mapbox-gl-style-spec';
 const { isExpression } = expression;
 import { evaluateExpression } from './evaluate-expression';
+
+let comboValueLimit;
+propertyValueComboLimitStore.subscribe(value => {
+  comboValueLimit = value;
+});
 
 const FALLBACKS = {
   string: 'FALLBACK',
@@ -181,10 +187,11 @@ export const getPropertyValues = value => {
     if (valueType === 'object' && Array.isArray(valueType)) {
       valueType = 'array';
     }
-    acc[prop] =
+    const values =
       valueType !== undefined
         ? properties[prop].concat([FALLBACKS[valueType]])
         : properties[prop];
+    acc[prop] = [...new Set(values)];
     return acc;
   }, {});
 
@@ -320,6 +327,29 @@ export const expandLayer = layer => {
     zooms = [...new Set(zooms.concat(propertyZooms))];
   });
 
+  // // Fast-cartesian requires arrays of arrays, so key/value pairs become
+  // // strings here that we convert back afterwards
+  // const splitValue = '///';
+  // properties = Object.entries(properties).reduce((acc, kv) => {
+  //   const [k, v] = kv;
+  //   const values = v; // v.slice(0, comboValueLimit);
+  //   acc.push(values.map(val => `${k}${splitValue}${val}`));
+  //   return acc;
+  // }, []);
+
+  // let propertyCombos = fastCartesian(properties);
+
+  // if (propertyCombos.length === 13824) console.log(layer.id);
+
+  // propertyCombos = propertyCombos.map(combo => {
+  //   const obj = combo.reduce((acc, pair) => {
+  //     const [property, value] = pair.split(splitValue);
+  //     acc[property] = value;
+  //     return acc;
+  //   }, {});
+  //   return obj;
+  // });
+
   let propertyCombos = cartesian(properties);
 
   // Dedupe the combos
@@ -332,6 +362,9 @@ export const expandLayer = layer => {
     }
     return acc;
   }, []);
+
+  // TODO further limit
+  propertyCombos = propertyCombos.slice(0, 3);
 
   let nextLayers = [];
 
@@ -380,7 +413,7 @@ const expandLayers = layers => {
     acc = acc.concat(expandLayer(l));
     return acc;
   }, []);
-
+  console.log({ before: layers.length, after: nextLayers.length });
   return nextLayers;
 };
 

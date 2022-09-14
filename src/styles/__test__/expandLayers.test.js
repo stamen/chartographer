@@ -2,8 +2,7 @@ import {
   getPropertyValues,
   parseConditionalExpression,
   parseScaleExpression,
-  expandLayer,
-  getPropertyCombos
+  expandLayer
 } from '../expandLayers';
 
 describe('getPropertyValues', () => {
@@ -523,4 +522,329 @@ describe('expandLayer', () => {
     ];
     expect(actual).toEqual(expected);
   });
+
+  // ----------------------------------------------------------------------------------------
+  test.only('expands layer', () => {
+    layer = {
+      id: 'test-layer-4',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'transportation',
+      minzoom: 4,
+      filter: [
+        'all',
+        [
+          'in',
+          ['get', 'class'],
+          [
+            'literal',
+            [
+              'motorway',
+              'trunk',
+              'primary',
+              'secondary',
+              'tertiary',
+              'minor',
+              'service'
+            ]
+          ]
+        ],
+        ['==', ['get', 'brunnel'], 'tunnel']
+      ],
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
+        'line-sort-key': [
+          '+',
+          ['*', -28, ['coalesce', ['get', 'ramp'], 0]],
+          [
+            '*',
+            4,
+            [
+              'match',
+              ['get', 'class'],
+              'motorway',
+              6,
+              'trunk',
+              5,
+              'primary',
+              4,
+              'secondary',
+              3,
+              'tertiary',
+              2,
+              'minor',
+              1,
+              0
+            ]
+          ],
+          ['*', 2, ['coalesce', ['get', 'expressway'], 0]],
+          ['coalesce', ['get', 'toll'], 0]
+        ],
+        visibility: 'visible'
+      },
+      paint: {
+        'line-opacity': [
+          'step',
+          ['zoom'],
+          [
+            'match',
+            ['coalesce', ['get', 'ramp'], 0],
+            1,
+            0,
+            ['match', ['get', 'network'], 'us-interstate', 1, 0]
+          ],
+          5,
+          [
+            'match',
+            ['coalesce', ['get', 'ramp'], 0],
+            1,
+            0,
+            ['match', ['get', 'class'], ['motorway', 'trunk'], 1, 0]
+          ],
+          7,
+          ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], 1, 0],
+          9,
+          [
+            'match',
+            ['get', 'class'],
+            ['motorway', 'trunk', 'primary', 'secondary'],
+            1,
+            0
+          ],
+          11,
+          [
+            'match',
+            ['get', 'class'],
+            ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'],
+            1,
+            0
+          ],
+          12,
+          ['match', ['get', 'class'], 'service', 0, 1],
+          13,
+          [
+            'match',
+            ['get', 'class'],
+            'service',
+            ['match', ['get', 'service'], ['parking_aisle', 'driveway'], 0, 1],
+            1
+          ],
+          15,
+          1
+        ],
+        'line-color': [
+          'match',
+          ['get', 'brunnel'],
+          'tunnel',
+          [
+            'match',
+            ['get', 'class'],
+            'motorway',
+            [
+              'match',
+              ['coalesce', ['get', 'toll'], 0],
+              1,
+              'hsl(48, 71%, 90%)',
+              'hsl(0, 71%, 90%)'
+            ],
+            'trunk',
+            [
+              'match',
+              ['coalesce', ['get', 'toll'], 0],
+              1,
+              'hsl(48, 77%, 90%)',
+              'hsl(0, 77%, 90%)'
+            ],
+            [
+              'match',
+              ['coalesce', ['get', 'toll'], 0],
+              1,
+              'hsl(48, 100%, 95%)',
+              'hsl(0, 0%, 95%)'
+            ]
+          ],
+          [
+            'match',
+            ['get', 'class'],
+            'trunk',
+            [
+              'match',
+              ['coalesce', ['get', 'expressway'], 0],
+              1,
+              [
+                'match',
+                ['coalesce', ['get', 'toll'], 0],
+                1,
+                'hsl(48, 95%, 95%)',
+                'hsl(0, 95%, 95%)'
+              ],
+              [
+                'match',
+                ['coalesce', ['get', 'toll'], 0],
+                1,
+                'hsl(48, 77%, 50%)',
+                'hsl(0, 77%, 50%)'
+              ]
+            ],
+            [
+              'match',
+              ['coalesce', ['get', 'toll'], 0],
+              1,
+              'hsl(48, 100%, 75%)',
+              'hsl(0, 100%, 100%)'
+            ]
+          ]
+        ],
+        'line-width': [
+          'interpolate',
+          ['exponential', 1.2],
+          ['zoom'],
+          4,
+          [
+            '*',
+            0.5,
+            [
+              'match',
+              ['get', 'class'],
+              ['motorway', 'trunk'],
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.5, 1],
+              'primary',
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.45, 0.9],
+              'secondary',
+              [
+                'match',
+                ['coalesce', ['get', 'ramp'], 0],
+                1,
+                0.3,
+                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6]
+              ],
+              'tertiary',
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.25, 0.5],
+              'minor',
+              0.3,
+              'service',
+              [
+                'match',
+                ['get', 'service'],
+                ['parking_aisle', 'driveway'],
+                0.15,
+                0.2
+              ],
+              0.2
+            ]
+          ],
+          9,
+          [
+            'match',
+            ['get', 'class'],
+            ['motorway', 'trunk'],
+            ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.5, 1],
+            'primary',
+            ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.45, 0.9],
+            'secondary',
+            [
+              'match',
+              ['coalesce', ['get', 'ramp'], 0],
+              1,
+              0.3,
+              ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6]
+            ],
+            'tertiary',
+            ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.25, 0.5],
+            'minor',
+            0.3,
+            'service',
+            [
+              'match',
+              ['get', 'service'],
+              ['parking_aisle', 'driveway'],
+              0.15,
+              0.2
+            ],
+            0.2
+          ],
+          12,
+          [
+            '*',
+            [
+              'match',
+              ['get', 'class'],
+              'motorway',
+              3.2,
+              ['match', ['coalesce', ['get', 'expressway'], 0], 1, 3.5, 4]
+            ],
+            [
+              'match',
+              ['get', 'class'],
+              ['motorway', 'trunk'],
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.5, 1],
+              'primary',
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.45, 0.9],
+              'secondary',
+              [
+                'match',
+                ['coalesce', ['get', 'ramp'], 0],
+                1,
+                0.3,
+                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6]
+              ],
+              'tertiary',
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.25, 0.5],
+              'minor',
+              0.3,
+              'service',
+              [
+                'match',
+                ['get', 'service'],
+                ['parking_aisle', 'driveway'],
+                0.15,
+                0.2
+              ],
+              0.2
+            ]
+          ],
+          20,
+          [
+            '*',
+            ['match', ['coalesce', ['get', 'expressway'], 0], 1, 16, 18],
+            [
+              'match',
+              ['get', 'class'],
+              ['motorway', 'trunk'],
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.5, 1],
+              'primary',
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.45, 0.9],
+              'secondary',
+              [
+                'match',
+                ['coalesce', ['get', 'ramp'], 0],
+                1,
+                0.3,
+                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6]
+              ],
+              'tertiary',
+              ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.25, 0.5],
+              'minor',
+              0.3,
+              'service',
+              [
+                'match',
+                ['get', 'service'],
+                ['parking_aisle', 'driveway'],
+                0.15,
+                0.2
+              ],
+              0.2
+            ]
+          ]
+        ],
+        'line-blur': 0.5
+      }
+    };
+    const actual = expandLayer(layer);
+    const expected = [];
+    expect(actual).toEqual(expected);
+  });
+  // ----------------------------------------------------------------------------------------
 });
