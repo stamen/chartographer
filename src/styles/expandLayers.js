@@ -1,4 +1,3 @@
-// import fastCartesian from 'fast-cartesian';
 import cartesian from 'cartesian';
 import { latest } from '@mapbox/mapbox-gl-style-spec';
 import mergeWith from 'lodash.mergewith';
@@ -327,29 +326,6 @@ export const expandLayer = layer => {
     zooms = [...new Set(zooms.concat(propertyZooms))];
   });
 
-  // // Fast-cartesian requires arrays of arrays, so key/value pairs become
-  // // strings here that we convert back afterwards
-  // const splitValue = '///';
-  // properties = Object.entries(properties).reduce((acc, kv) => {
-  //   const [k, v] = kv;
-  //   const values = v; // v.slice(0, comboValueLimit);
-  //   acc.push(values.map(val => `${k}${splitValue}${val}`));
-  //   return acc;
-  // }, []);
-
-  // let propertyCombos = fastCartesian(properties);
-
-  // if (propertyCombos.length === 13824) console.log(layer.id);
-
-  // propertyCombos = propertyCombos.map(combo => {
-  //   const obj = combo.reduce((acc, pair) => {
-  //     const [property, value] = pair.split(splitValue);
-  //     acc[property] = value;
-  //     return acc;
-  //   }, {});
-  //   return obj;
-  // });
-
   let propertyCombos = cartesian(properties);
 
   // Dedupe the combos
@@ -363,8 +339,7 @@ export const expandLayer = layer => {
     return acc;
   }, []);
 
-  // TODO further limit
-  propertyCombos = propertyCombos.slice(0, 3);
+  propertyCombos = propertyCombos.slice(0, comboValueLimit);
 
   let nextLayers = [];
 

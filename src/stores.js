@@ -1,3 +1,3 @@
 import { writable } from 'svelte/store';
 
-export const propertyValueComboLimitStore = writable(2);
+export const propertyValueComboLimitStore = writable(10);

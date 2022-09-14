@@ -2,7 +2,8 @@ import {
   getPropertyValues,
   parseConditionalExpression,
   parseScaleExpression,
-  expandLayer
+  expandLayer,
+  getPropertyCombos
 } from '../expandLayers';
 
 describe('getPropertyValues', () => {
@@ -123,7 +124,7 @@ describe('expandLayer', () => {
   let layer;
   test('expands layer', () => {
     layer = {
-      id: 'test-layer-3',
+      id: 'test-layer',
       type: 'fill',
       metadata: {},
       source: 'composite',
@@ -160,7 +161,7 @@ describe('expandLayer', () => {
     const actual = expandLayer(layer);
     const expected = [
       {
-        id: 'test-layer-3/class: "blue"/type: "clear"',
+        id: 'test-layer/class: "blue"/type: "clear"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -205,7 +206,7 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class: "blue"/type: "FALLBACK"',
+        id: 'test-layer/class: "blue"/type: "FALLBACK"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -250,7 +251,7 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class: "near-blue"/type: "clear"',
+        id: 'test-layer/class: "near-blue"/type: "clear"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -295,7 +296,7 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class: "near-blue"/type: "FALLBACK"',
+        id: 'test-layer/class: "near-blue"/type: "FALLBACK"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -340,7 +341,7 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class: "green"/type: "clear"',
+        id: 'test-layer/class: "green"/type: "clear"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -385,7 +386,7 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class: "green"/type: "FALLBACK"',
+        id: 'test-layer/class: "green"/type: "FALLBACK"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -430,7 +431,7 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class: "FALLBACK"/type: "clear"',
+        id: 'test-layer/class: "FALLBACK"/type: "clear"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -475,7 +476,7 @@ describe('expandLayer', () => {
         }
       },
       {
-        id: 'test-layer-3/class: "FALLBACK"/type: "FALLBACK"',
+        id: 'test-layer/class: "FALLBACK"/type: "FALLBACK"',
         type: 'fill',
         metadata: {},
         source: 'composite',
@@ -523,10 +524,9 @@ describe('expandLayer', () => {
     expect(actual).toEqual(expected);
   });
 
-  // ----------------------------------------------------------------------------------------
-  test.only('expands layer', () => {
+  test('expands layer with lots of properties with hard limit', () => {
     layer = {
-      id: 'test-layer-4',
+      id: 'test-layer',
       type: 'line',
       source: 'openmaptiles',
       'source-layer': 'transportation',
@@ -842,9 +842,8 @@ describe('expandLayer', () => {
         'line-blur': 0.5
       }
     };
-    const actual = expandLayer(layer);
-    const expected = [];
+    const actual = expandLayer(layer).length;
+    const expected = 10;
     expect(actual).toEqual(expected);
   });
-  // ----------------------------------------------------------------------------------------
 });
