@@ -79,6 +79,7 @@ describe('parseConditionalExpression', () => {
     expression = ['match', ['get', 'class'], 'grass', 'green', 'red'];
     const actual = parseConditionalExpression(expression);
     const expected = {
+      inputs: ['grass'],
       outputs: ['green', 'red'],
       properties: { class: ['grass'] }
     };
@@ -95,8 +96,13 @@ describe('parseConditionalExpression', () => {
       'red'
     ];
     const actual = parseConditionalExpression(expression);
-
     const expected = {
+      inputs: [
+        ['==', ['get', 'class'], 'grass'],
+        ['==', ['get', 'class'], 'water'],
+        ['==', ['get', 'class'], 'grass'],
+        ['==', ['get', 'class'], 'water']
+      ],
       outputs: ['green', 'blue', 'red'],
       properties: { class: ['grass', 'water'] }
     };
@@ -113,6 +119,7 @@ describe('parseConditionalExpression', () => {
     ];
     const actual = parseConditionalExpression(expression);
     const expected = {
+      inputs: ['grass', 'spring'],
       outputs: ['green', 'brown', 'red'],
       properties: { class: ['grass'], type: ['spring'] }
     };
@@ -173,17 +180,17 @@ describe('expandLayer', () => {
             ['linear'],
             ['zoom'],
             5,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             10,
-            'hsl(0, 100%, 50%)',
+            'rgba(255, 0, 0, 1)',
             2,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             2.1,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             7,
-            'hsl(280, 100%, 30%)',
+            'rgba(102, 0, 153, 1)',
             7.1,
-            'hsl(283, 100%, 29%)'
+            'rgba(107, 0, 148, 1)'
           ],
           'fill-opacity': [
             'interpolate',
@@ -218,17 +225,17 @@ describe('expandLayer', () => {
             ['linear'],
             ['zoom'],
             5,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             10,
-            'hsl(0, 100%, 50%)',
+            'rgba(255, 0, 0, 1)',
             2,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             2.1,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             7,
-            'hsl(280, 100%, 30%)',
+            'rgba(102, 0, 153, 1)',
             7.1,
-            'hsl(283, 100%, 29%)'
+            'rgba(107, 0, 148, 1)'
           ],
           'fill-opacity': [
             'interpolate',
@@ -263,17 +270,17 @@ describe('expandLayer', () => {
             ['linear'],
             ['zoom'],
             5,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             10,
-            'hsl(0, 100%, 50%)',
+            'rgba(255, 0, 0, 1)',
             2,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             2.1,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             7,
-            'hsl(280, 100%, 30%)',
+            'rgba(102, 0, 153, 1)',
             7.1,
-            'hsl(283, 100%, 29%)'
+            'rgba(107, 0, 148, 1)'
           ],
           'fill-opacity': [
             'interpolate',
@@ -308,17 +315,17 @@ describe('expandLayer', () => {
             ['linear'],
             ['zoom'],
             5,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             10,
-            'hsl(0, 100%, 50%)',
+            'rgba(255, 0, 0, 1)',
             2,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             2.1,
-            'hsl(240, 100%, 50%)',
+            'rgba(0, 0, 255, 1)',
             7,
-            'hsl(280, 100%, 30%)',
+            'rgba(102, 0, 153, 1)',
             7.1,
-            'hsl(283, 100%, 29%)'
+            'rgba(107, 0, 148, 1)'
           ],
           'fill-opacity': [
             'interpolate',
@@ -353,17 +360,17 @@ describe('expandLayer', () => {
             ['linear'],
             ['zoom'],
             5,
-            'hsl(120, 100%, 25%)',
+            'rgba(0, 128, 0, 1)',
             10,
-            'hsl(0, 100%, 50%)',
+            'rgba(255, 0, 0, 1)',
             2,
-            'hsl(120, 100%, 25%)',
+            'rgba(0, 128, 0, 1)',
             2.1,
-            'hsl(120, 100%, 25%)',
+            'rgba(0, 128, 0, 1)',
             7,
-            'hsl(45, 100%, 20%)',
+            'rgba(102, 77, 0, 1)',
             7.1,
-            'hsl(41, 100%, 21%)'
+            'rgba(107, 74, 0, 1)'
           ],
           'fill-opacity': [
             'interpolate',
@@ -398,17 +405,17 @@ describe('expandLayer', () => {
             ['linear'],
             ['zoom'],
             5,
-            'hsl(120, 100%, 25%)',
+            'rgba(0, 128, 0, 1)',
             10,
-            'hsl(0, 100%, 50%)',
+            'rgba(255, 0, 0, 1)',
             2,
-            'hsl(120, 100%, 25%)',
+            'rgba(0, 128, 0, 1)',
             2.1,
-            'hsl(120, 100%, 25%)',
+            'rgba(0, 128, 0, 1)',
             7,
-            'hsl(45, 100%, 20%)',
+            'rgba(102, 77, 0, 1)',
             7.1,
-            'hsl(41, 100%, 21%)'
+            'rgba(107, 74, 0, 1)'
           ],
           'fill-opacity': [
             'interpolate',
@@ -443,17 +450,17 @@ describe('expandLayer', () => {
             ['linear'],
             ['zoom'],
             5,
-            'hsl(0, 0%, 0%)',
+            'rgba(0, 0, 0, 1)',
             10,
-            'hsl(0, 100%, 50%)',
+            'rgba(255, 0, 0, 1)',
             2,
-            'hsl(0, 0%, 0%)',
+            'rgba(0, 0, 0, 1)',
             2.1,
-            'hsl(0, 0%, 0%)',
+            'rgba(0, 0, 0, 1)',
             7,
-            'hsl(0, 100%, 20%)',
+            'rgba(102, 0, 0, 1)',
             7.1,
-            'hsl(0, 100%, 21%)'
+            'rgba(107, 0, 0, 1)'
           ],
           'fill-opacity': [
             'interpolate',
@@ -488,17 +495,17 @@ describe('expandLayer', () => {
             ['linear'],
             ['zoom'],
             5,
-            'hsl(0, 0%, 0%)',
+            'rgba(0, 0, 0, 1)',
             10,
-            'hsl(0, 100%, 50%)',
+            'rgba(255, 0, 0, 1)',
             2,
-            'hsl(0, 0%, 0%)',
+            'rgba(0, 0, 0, 1)',
             2.1,
-            'hsl(0, 0%, 0%)',
+            'rgba(0, 0, 0, 1)',
             7,
-            'hsl(0, 100%, 20%)',
+            'rgba(102, 0, 0, 1)',
             7.1,
-            'hsl(0, 100%, 21%)'
+            'rgba(107, 0, 0, 1)'
           ],
           'fill-opacity': [
             'interpolate',
