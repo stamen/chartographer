@@ -164,8 +164,8 @@ describe('expandLayer', () => {
         'fill-antialias': false
       }
     };
-    const actual = expandLayer(layer);
-    const expected = [
+    const { expandedLayers, comboLimitHit } = expandLayer(layer);
+    const expectedLayers = [
       {
         id: 'test-layer/class: "blue"/type: "clear"',
         type: 'fill',
@@ -527,7 +527,8 @@ describe('expandLayer', () => {
         }
       }
     ];
-    expect(actual).toEqual(expected);
+    expect(expandedLayers).toEqual(expandedLayers);
+    expect(comboLimitHit).toBe(false);
   });
 
   test('expands layer with lots of properties with hard limit (10)', () => {
@@ -848,8 +849,8 @@ describe('expandLayer', () => {
         'line-blur': 0.5
       }
     };
-    const actual = expandLayer(layer).length;
-    const expected = 10;
-    expect(actual).toEqual(expected);
+    const { expandedLayers, comboLimitHit } = expandLayer(layer);
+    expect(expandedLayers.length).toEqual(10);
+    expect(comboLimitHit).toBe(true);
   });
 });
