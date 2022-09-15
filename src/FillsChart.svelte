@@ -114,6 +114,8 @@
     }
 
     // Initialize the chart, stop loading
+    // Let progress hit 100%, then brief timeout before moving on
+    // This lets fast style loads feel smoother with loading
     loadingStore.update(v => ({ ...v, progress: 1 }));
     setTimeout(() => loadingStore.set({ loading: false, progress: null }), 250);
   };

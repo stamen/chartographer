@@ -39,7 +39,6 @@
     "color": "^4.2.3",
     "computed-style-to-inline-style": "^3.0.0",
     "d3": "^7.1.1",
-    "fast-cartesian": "^7.2.0",
     "lodash.merge": "^4.6.2",
     "lodash.mergewith": "^4.6.2",
     "lodash.throttle": "^4.1.1",

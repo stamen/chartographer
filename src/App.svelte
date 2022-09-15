@@ -1,7 +1,7 @@
 <script>
   import * as d3 from 'd3';
   import { migrate } from '@mapbox/mapbox-gl-style-spec';
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
   import { readQuery, writeQuery } from './query';
