@@ -3,8 +3,8 @@
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
-  import { expandLayers } from './styles/expandLayers';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
+  import { loadingStore, displayLayersStore } from './stores';
 
   export let style;
   export let updateBackgroundRect;
@@ -29,9 +29,26 @@
 
   let zoomLevels = [];
 
-  $: if (style && style.layers) {
-    let layers = style.layers;
-    layers = expandLayers(layers);
+  let displayLayers = [];
+
+  const getExpandedLayers = layers => {
+    // This is the built version of expand-layers-worker.js
+    const worker = new Worker('./worker.js');
+    worker.postMessage(layers);
+    worker.addEventListener('message', event => {
+      const { progress, expandedLayers } = event.data;
+      loadingStore.update(v => ({ ...v, progress }));
+      if (expandedLayers) {
+        displayLayers = expandedLayers;
+      }
+    });
+  };
+
+  const initChart = layers => {
+    if (!layers.length) return;
+
+    // Set displayLayers in the store
+    displayLayersStore.set({ style, layers: displayLayers });
 
     chartHeight = layers.length * 65;
 
@@ -41,7 +58,7 @@
     );
     yScale = d3
       .scaleBand(
-        layers.map(({ id }) => id),
+        displayLayers.map(({ id }) => id),
         [MARGIN.top, chartHeight - MARGIN.bottom]
       )
       .padding(0.25);
@@ -87,9 +104,27 @@
       );
       updateBackgroundRect(backgroundRect, backgroundGradient);
     }
+
+    // Initialize the chart, stop loading
+    loadingStore.set({ loading: false, progress: null });
+  };
+
+  $: if (style && style.layers) {
+    if (
+      !$displayLayersStore?.style ||
+      $displayLayersStore?.style?.id !== style?.id
+    ) {
+      // Start loading before getting expanded layers
+      loadingStore.update(v => ({ ...v, loading: true }));
+      getExpandedLayers(style.layers);
+    } else {
+      displayLayers = $displayLayersStore.layers;
+    }
   }
 
-  onMount(() => {
+  $: initChart(displayLayers);
+
+  $: onMount(() => {
     document.addEventListener('scroll', () => (scrollY = window.scrollY));
   });
 

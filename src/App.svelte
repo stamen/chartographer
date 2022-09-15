@@ -1,26 +1,34 @@
 <script>
   import * as d3 from 'd3';
   import { migrate } from '@mapbox/mapbox-gl-style-spec';
-  import { onMount } from 'svelte';
-  import Fa from 'svelte-fa/src/fa.svelte'
-  import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons'
+  import { onMount, tick } from 'svelte';
+  import Fa from 'svelte-fa/src/fa.svelte';
+  import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
   import { readQuery, writeQuery } from './query';
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
+  import ProgressBar from './ProgressBar.svelte';
   import computedStyleToInlineStyle from 'computed-style-to-inline-style';
-  import { convertStylesheetToRgb } from './convert-colors'
+  import { convertStylesheetToRgb } from './convert-colors';
+  import { loadingStore } from './stores';
 
   export let selectedTab;
   export let style;
   export let backgroundSvgData = {};
   export let loadDefaultStyle = false;
 
+  let isLoading;
+  let loadingProgress;
+  loadingStore.subscribe(value => {
+    isLoading = value.loading;
+    loadingProgress = value.progress;
+  });
+
   onMount(() => {
     const query = readQuery();
     if (query.selectedTab) {
       selectedTab = query.selectedTab;
-    }
-    else {
+    } else {
       selectedTab = 'fill';
     }
 
@@ -62,13 +70,13 @@
 
   async function handleDrop(e) {
     e.stopPropagation();
-    e.preventDefault();  
+    e.preventDefault();
     const { files } = e.dataTransfer;
     const text = await files[0].text();
     style = migrate(JSON.parse(text));
     style = convertStylesheetToRgb(style);
-     // On dropping in a style, switch to the fill tab to refresh background layer state
-     handleTabChange({ detail: { tab: 'fill' } });
+    // On dropping in a style, switch to the fill tab to refresh background layer state
+    handleTabChange({ detail: { tab: 'fill' } });
   }
 
   function clearStyle() {
@@ -76,21 +84,24 @@
   }
 
   function updateBackgroundRect(backgroundRect, backgroundGradient) {
-    backgroundSvgData = { gradientDefs: backgroundGradient, rect: backgroundRect };
+    backgroundSvgData = {
+      gradientDefs: backgroundGradient,
+      rect: backgroundRect
+    };
   }
 
   function downloadSvg() {
     let svg = document.getElementById(selectedTab);
 
     computedStyleToInlineStyle(svg, {
-      recursive:true,
+      recursive: true,
       // Limiting to these properties for now since the function runs much faster
       properties: ['font-size', 'font-family', 'text-anchor']
     });
-    
-    svg = new XMLSerializer().serializeToString(svg); 
+
+    svg = new XMLSerializer().serializeToString(svg);
     const blob = new Blob([svg]);
-    const element = document.createElement("a");
+    const element = document.createElement('a');
     element.download = `${style.id}-${selectedTab}-chart.svg`;
     element.href = window.URL.createObjectURL(blob);
     element.click();
@@ -104,16 +115,31 @@
   on:drop={handleDrop}
 >
   {#if style}
-  <div class="top-bar"><Tabs on:tabchange={handleTabChange} {selectedTab} />
-    {#if selectedTab !== 'typography'}
-    <button on:click={downloadSvg} class="download-button">Download SVG <div class="icon"><Fa icon={faDownload} /></div></button>
-    {/if}
-  </div>
-    <TabsContent {selectedTab} {style} {updateBackgroundRect} {backgroundSvgData} />
-    <button class="clear-style-button" on:click={clearStyle}>Clear style <div class="icon"><Fa icon={faTrash} /></div></button>
+    <div class="top-bar">
+      <Tabs on:tabchange={handleTabChange} {selectedTab} />
+      {#if selectedTab !== 'typography'}
+        <button on:click={downloadSvg} class="download-button"
+          >Download SVG <div class="icon"><Fa icon={faDownload} /></div></button
+        >
+      {/if}
+    </div>
+    <TabsContent
+      {selectedTab}
+      {style}
+      {updateBackgroundRect}
+      {backgroundSvgData}
+    />
+    <button class="clear-style-button" on:click={clearStyle}
+      >Clear style <div class="icon"><Fa icon={faTrash} /></div></button
+    >
   {:else}
     <div class="drop">
       <div>Drop a style here</div>
+    </div>
+  {/if}
+  {#if isLoading}
+    <div class="loading-screen">
+      <ProgressBar progress={loadingProgress} />
     </div>
   {/if}
 </main>
@@ -168,5 +194,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+  }
+
+  .loading-screen {
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
   }
 </style>

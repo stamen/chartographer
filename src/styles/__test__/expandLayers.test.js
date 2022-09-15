@@ -2,8 +2,7 @@ import {
   getPropertyValues,
   parseConditionalExpression,
   parseScaleExpression,
-  expandLayer,
-  getPropertyCombos
+  expandLayer
 } from '../expandLayers';
 
 describe('getPropertyValues', () => {
@@ -531,7 +530,7 @@ describe('expandLayer', () => {
     expect(actual).toEqual(expected);
   });
 
-  test('expands layer with lots of properties with hard limit', () => {
+  test('expands layer with lots of properties with hard limit (10)', () => {
     layer = {
       id: 'test-layer',
       type: 'line',

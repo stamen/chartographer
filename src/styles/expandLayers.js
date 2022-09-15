@@ -2,7 +2,6 @@ import cartesian from 'cartesian';
 import { latest } from '@mapbox/mapbox-gl-style-spec';
 import mergeWith from 'lodash.mergewith';
 import { propertyValueComboLimitStore } from '../stores';
-
 import { expression } from '@mapbox/mapbox-gl-style-spec';
 const { isExpression } = expression;
 import { evaluateExpression } from './evaluate-expression';
@@ -382,14 +381,3 @@ export const expandLayer = layer => {
 
   return nextLayers;
 };
-
-const expandLayers = layers => {
-  const nextLayers = layers.reduce((acc, l) => {
-    acc = acc.concat(expandLayer(l));
-    return acc;
-  }, []);
-  console.log({ before: layers.length, after: nextLayers.length });
-  return nextLayers;
-};
-
-export { expandLayers };

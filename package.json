@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
+    "build": "rollup -c rollup.config.worker.js && rollup -c",
+    "dev": "rollup -c rollup.config.worker.js && rollup -c -w",
     "start": "sirv public --no-clear",
     "deploy": "gh-pages -d public",
     "test": "jest test",
@@ -41,6 +41,7 @@
     "fast-cartesian": "^7.2.0",
     "lodash.merge": "^4.6.2",
     "lodash.mergewith": "^4.6.2",
+    "lodash.throttle": "^4.1.1",
     "mapbox-expression": "^0.0.3",
     "mapbox-gl": "^1.13.2",
     "mapbox-gl-style-recurse": "github:stamen/mapbox-gl-style-recurse",
