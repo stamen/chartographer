@@ -7,6 +7,7 @@ self.addEventListener(
   'message',
   e => {
     const layers = e.data;
+    let limitedExpandedLayerIds = [];
 
     let progress = 0;
     const throttledProgressUpdate = throttle(() => {
@@ -18,7 +19,9 @@ self.addEventListener(
       self.postMessage({ progress });
       try {
         nextLayers = layers.reduce((acc, l, i) => {
-          acc = acc.concat(expandLayer(l));
+          const { expandedLayers, comboLimitHit } = expandLayer(l);
+          if (comboLimitHit) limitedExpandedLayerIds.push(l.id);
+          acc = acc.concat(expandedLayers);
           progress = i / layers.length;
           throttledProgressUpdate();
           return acc;
@@ -27,7 +30,12 @@ self.addEventListener(
         console.error(err);
       }
       setTimeout(
-        () => self.postMessage({ progress, expandedLayers: nextLayers }),
+        () =>
+          self.postMessage({
+            progress,
+            expandedLayers: nextLayers,
+            limitedExpandedLayerIds
+          }),
         throttleTime
       );
     };

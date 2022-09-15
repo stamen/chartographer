@@ -4,4 +4,8 @@ export const propertyValueComboLimitStore = writable(10);
 
 export const loadingStore = writable({ loading: false, progress: null });
 
-export const displayLayersStore = writable({ style: null, layers: [] });
+export const displayLayersStore = writable({
+  style: null,
+  layers: [],
+  limitHit: []
+});

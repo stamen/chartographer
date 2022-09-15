@@ -292,7 +292,8 @@ const createEvaluatedZoomExpression = (
 // Creates a layer for each combination of properties referenced in previous existing layer
 export const expandLayer = layer => {
   const expandedProperties = getExpandableProperties(layer);
-  if (!expandedProperties.length) return [layer];
+  if (!expandedProperties.length)
+    return { expandedLayers: [layer], comboLimitHit: false };
   let zooms = [];
   let propertyPaths = [];
   let properties = {};
@@ -342,8 +343,6 @@ export const expandLayer = layer => {
   propertyCombos = propertyCombos.slice(0, comboValueLimit);
   const slicedComboAmt = propertyCombos.length;
 
-  // console.log({ fullComboAmt, slicedComboAmt });
-
   let nextLayers = [];
 
   for (const combo of propertyCombos) {
@@ -383,5 +382,8 @@ export const expandLayer = layer => {
     nextLayers.push(nextLayer);
   }
 
-  return nextLayers;
+  return {
+    expandedLayers: nextLayers,
+    comboLimitHit: fullComboAmt > slicedComboAmt
+  };
 };

@@ -4,7 +4,11 @@
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
-  import { loadingStore, displayLayersStore } from './stores';
+  import {
+    loadingStore,
+    displayLayersStore,
+    propertyValueComboLimitStore
+  } from './stores';
   import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
 
   export let style;
@@ -30,16 +34,20 @@
 
   let zoomLevels = [];
 
+  // List of expanded layers for display
   let displayLayers = [];
+  // List of layers where the property/value combination limit was reached
+  let limitHit = [];
 
   const getExpandedLayers = layers => {
     const worker = new ExpandLayersWorker();
     worker.postMessage(layers);
     worker.addEventListener('message', event => {
-      const { progress, expandedLayers } = event.data;
+      const { progress, expandedLayers, limitedExpandedLayerIds } = event.data;
       loadingStore.update(v => ({ ...v, progress }));
       if (expandedLayers) {
         displayLayers = expandedLayers;
+        limitHit = limitedExpandedLayerIds;
       }
     });
   };
@@ -48,7 +56,7 @@
     if (!layers.length) return;
 
     // Set displayLayers in the store
-    displayLayersStore.set({ style, layers: displayLayers });
+    displayLayersStore.set({ style, layers: displayLayers, limitHit });
 
     chartHeight = layers.length * 65;
 
@@ -136,6 +144,14 @@
       top: yScale(layer.id) + yScale.bandwidth()
     };
   }
+
+  function handleTooltipWarning(layerId, expandedLayerId) {
+    tooltip = {
+      text: `${layerId} had too many possible property/value combinations and has been limited to showing ${$propertyValueComboLimitStore} for performance.`,
+      left: 24,
+      top: yScale(expandedLayerId) + yScale.bandwidth() * 0.75
+    };
+  }
 </script>
 
 <div class="fills-chart">
@@ -193,9 +209,26 @@
           transform="translate(0,
           {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
         >
-          {#each rect.layer.id.split('/') as idSection, i}
-            <text y={18 * i} x={i > 0 ? 18 : 0}
-              >{#if i > 0}↳{/if}{idSection}</text
+          {#each rect.layer.id.split('/') as idSection, i}<g>
+              {#if i === 0 && limitHit.includes(idSection)}
+                <circle
+                  cx="6"
+                  cy="-6"
+                  r="6"
+                  fill="red"
+                  on:mouseover={() =>
+                    handleTooltipWarning(idSection, rect.layer.id)}
+                  on:mouseout={handleTooltipClose}
+                />
+              {/if}
+              <text
+                y={18 * i}
+                x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
+              >
+                {#if i > 0}↳{/if}
+
+                {idSection}</text
+              ></g
             >
           {/each}
         </g>
