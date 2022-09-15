@@ -1,8 +1,7 @@
 <script>
   export let progress;
 
-  // width - margins
-  $: fullWidth = 360 - 6;
+  $: fullWidth = 360;
   $: loadedWidth = progress !== null && fullWidth * progress;
 </script>
 
@@ -26,7 +25,7 @@
 
   .grayed-out {
     background-color: gray;
-    opacity: 50%;
+    opacity: 60%;
     width: 100%;
     height: 100%;
     position: absolute;
@@ -46,13 +45,13 @@
     border-radius: 24px;
     border: 2px solid white;
     z-index: 1;
+    padding: 3px;
   }
 
   .progress {
-    height: calc(100% - 6px);
-    background-color: greenyellow;
+    height: 100%;
+    background-color: white;
     transition: all ease 0.1s;
     border-radius: 18px;
-    margin: 3px;
   }
 </style>

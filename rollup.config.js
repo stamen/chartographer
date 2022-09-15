@@ -58,6 +58,8 @@ export default {
 
     // we'll extract any component CSS out into
     // a separate file - better for performance
+    // Using `styles` instead of `css-only` due to incompatibility
+    // with web worker: https://github.com/darionco/rollup-plugin-web-worker-loader/issues/60
     styles(['extract', 'bundle.css']),
 
     // If you have external dependencies installed from
