@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "rollup -c rollup.config.worker.js && rollup -c",
+    "build": "rollup -c",
     "dev": "rollup -c -w",
     "start": "sirv public --no-clear",
     "deploy": "gh-pages -d public",

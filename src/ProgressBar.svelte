@@ -3,7 +3,7 @@
 
   // width - margins
   $: fullWidth = 360 - 6;
-  $: loadedWidth = fullWidth * progress;
+  $: loadedWidth = progress !== null && fullWidth * progress;
 </script>
 
 <div class="container">

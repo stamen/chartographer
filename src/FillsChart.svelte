@@ -106,7 +106,8 @@
     }
 
     // Initialize the chart, stop loading
-    loadingStore.set({ loading: false, progress: null });
+    loadingStore.update(v => ({ ...v, progress: 1 }));
+    setTimeout(() => loadingStore.set({ loading: false, progress: null }), 250);
   };
 
   $: if (style && style.layers) {
@@ -115,7 +116,7 @@
       $displayLayersStore?.style?.id !== style?.id
     ) {
       // Start loading before getting expanded layers
-      loadingStore.update(v => ({ ...v, loading: true }));
+      loadingStore.set({ loading: true, progress: 0 });
       getExpandedLayers(style.layers);
     } else {
       displayLayers = $displayLayersStore.layers;
