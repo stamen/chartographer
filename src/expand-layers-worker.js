@@ -1,4 +1,3 @@
-// NOTE: You will need to rebuild this file when making changes here to see them live, is not part of rollup watch
 import { expandLayer } from './styles/expandLayers';
 import throttle from 'lodash.throttle';
 

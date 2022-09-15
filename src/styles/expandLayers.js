@@ -338,7 +338,11 @@ export const expandLayer = layer => {
     return acc;
   }, []);
 
+  const fullComboAmt = propertyCombos.length;
   propertyCombos = propertyCombos.slice(0, comboValueLimit);
+  const slicedComboAmt = propertyCombos.length;
+
+  // console.log({ fullComboAmt, slicedComboAmt });
 
   let nextLayers = [];
 

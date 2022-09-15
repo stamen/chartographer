@@ -5,6 +5,7 @@
   import { getColor } from './get-color';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
   import { loadingStore, displayLayersStore } from './stores';
+  import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
 
   export let style;
   export let updateBackgroundRect;
@@ -32,8 +33,7 @@
   let displayLayers = [];
 
   const getExpandedLayers = layers => {
-    // This is the built version of expand-layers-worker.js
-    const worker = new Worker('./worker.js');
+    const worker = new ExpandLayersWorker();
     worker.postMessage(layers);
     worker.addEventListener('message', event => {
       const { progress, expandedLayers } = event.data;

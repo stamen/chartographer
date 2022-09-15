@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "rollup -c rollup.config.worker.js && rollup -c",
-    "dev": "rollup -c rollup.config.worker.js && rollup -c -w",
+    "dev": "rollup -c -w",
     "start": "sirv public --no-clear",
     "deploy": "gh-pages -d public",
     "test": "jest test",
@@ -28,6 +28,7 @@
     "rollup-plugin-livereload": "^2.0.0",
     "rollup-plugin-svelte": "^7.0.0",
     "rollup-plugin-terser": "^7.0.0",
+    "rollup-plugin-web-worker-loader": "^1.6.1",
     "svelte": "^3.0.0",
     "svelte-jester": "^2.3.2"
   },
