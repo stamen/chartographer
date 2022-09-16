@@ -10,7 +10,8 @@
   import ProgressBar from './ProgressBar.svelte';
   import computedStyleToInlineStyle from 'computed-style-to-inline-style';
   import { convertStylesheetToRgb } from './convert-colors';
-  import { loadingStore } from './stores';
+  import { loadingStore, displayLayersStore } from './stores';
+  import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
 
   export let selectedTab;
   export let style;
@@ -22,6 +23,11 @@
   loadingStore.subscribe(value => {
     isLoading = value.loading;
     loadingProgress = value.progress;
+  });
+
+  let expandedLayers = [];
+  displayLayersStore.subscribe(value => {
+    expandedLayers = value.layers;
   });
 
   onMount(() => {
@@ -36,6 +42,23 @@
       loadStyleUrl('./style.json');
     }
   });
+
+  const setExpandedLayers = style => {
+    const { layers } = style;
+    const worker = new ExpandLayersWorker();
+    worker.postMessage(layers);
+    worker.addEventListener('message', event => {
+      const { progress, expandedLayers, limitedExpandedLayerIds } = event.data;
+      loadingStore.update(v => ({ ...v, progress }));
+      if (expandedLayers) {
+        displayLayersStore.set({
+          style,
+          layers: expandedLayers,
+          limitHit: limitedExpandedLayerIds
+        });
+      }
+    });
+  };
 
   function getState() {
     let state = {};
@@ -107,6 +130,18 @@
     element.click();
     element.remove();
   }
+
+  $: if (style) {
+    loadingStore.set({ loading: true, progress: 0 });
+    setExpandedLayers(style);
+  }
+
+  $: if (expandedLayers.length) {
+    // Let progress hit 100%, then brief timeout before moving on
+    // This lets fast style loads feel smoother with loading
+    loadingStore.update(v => ({ ...v, progress: 1 }));
+    setTimeout(() => loadingStore.set({ loading: false, progress: null }), 250);
+  }
 </script>
 
 <main
@@ -114,7 +149,7 @@
   on:dragover={handleDragEnter}
   on:drop={handleDrop}
 >
-  {#if style}
+  {#if expandedLayers.length}
     <div class="top-bar">
       <Tabs on:tabchange={handleTabChange} {selectedTab} />
       {#if selectedTab !== 'typography'}
@@ -132,7 +167,7 @@
     <button class="clear-style-button" on:click={clearStyle}
       >Clear style <div class="icon"><Fa icon={faTrash} /></div></button
     >
-  {:else}
+  {:else if !isLoading}
     <div class="drop">
       <div>Drop a style here</div>
     </div>

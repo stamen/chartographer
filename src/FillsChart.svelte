@@ -3,13 +3,8 @@
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
+  import { displayLayersStore, propertyValueComboLimitStore } from './stores';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
-  import {
-    loadingStore,
-    displayLayersStore,
-    propertyValueComboLimitStore
-  } from './stores';
-  import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
 
   export let style;
   export let updateBackgroundRect;
@@ -34,29 +29,15 @@
 
   let zoomLevels = [];
 
-  // List of expanded layers for display
-  let displayLayers = [];
-  // List of layers where the property/value combination limit was reached
+  let expandedLayers = [];
   let limitHit = [];
+  displayLayersStore.subscribe(value => {
+    expandedLayers = value.layers;
+    limitHit = value.limitHit;
+  });
 
-  const getExpandedLayers = layers => {
-    const worker = new ExpandLayersWorker();
-    worker.postMessage(layers);
-    worker.addEventListener('message', event => {
-      const { progress, expandedLayers, limitedExpandedLayerIds } = event.data;
-      loadingStore.update(v => ({ ...v, progress }));
-      if (expandedLayers) {
-        displayLayers = expandedLayers;
-        limitHit = limitedExpandedLayerIds;
-      }
-    });
-  };
-
-  const initChart = layers => {
-    if (!layers.length) return;
-
-    // Set displayLayers in the store
-    displayLayersStore.set({ style, layers: displayLayers, limitHit });
+  const initChart = () => {
+    let layers = expandedLayers;
 
     chartHeight = layers.length * 65;
 
@@ -66,7 +47,7 @@
     );
     yScale = d3
       .scaleBand(
-        displayLayers.map(({ id }) => id),
+        layers.map(({ id }) => id),
         [MARGIN.top, chartHeight - MARGIN.bottom]
       )
       .padding(0.25);
@@ -112,30 +93,13 @@
       );
       updateBackgroundRect(backgroundRect, backgroundGradient);
     }
-
-    // Initialize the chart, stop loading
-    // Let progress hit 100%, then brief timeout before moving on
-    // This lets fast style loads feel smoother with loading
-    loadingStore.update(v => ({ ...v, progress: 1 }));
-    setTimeout(() => loadingStore.set({ loading: false, progress: null }), 250);
   };
 
-  $: if (style && style.layers) {
-    if (
-      !$displayLayersStore?.style ||
-      $displayLayersStore?.style?.id !== style?.id
-    ) {
-      // Start loading before getting expanded layers
-      loadingStore.set({ loading: true, progress: 0 });
-      getExpandedLayers(style.layers);
-    } else {
-      displayLayers = $displayLayersStore.layers;
-    }
+  $: if (expandedLayers) {
+    initChart();
   }
 
-  $: initChart(displayLayers);
-
-  $: onMount(() => {
+  onMount(() => {
     document.addEventListener('scroll', () => (scrollY = window.scrollY));
   });
 

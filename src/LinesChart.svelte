@@ -4,7 +4,7 @@
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
   import { gatherOutputs } from './gather-outputs';
-  import { displayLayersStore } from './stores';
+  import { displayLayersStore, propertyValueComboLimitStore } from './stores';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
@@ -33,6 +33,13 @@
   let layers;
 
   let backgroundRect;
+
+  let expandedLayers = [];
+  let limitHit = [];
+  displayLayersStore.subscribe(value => {
+    expandedLayers = value.layers;
+    limitHit = value.limitHit;
+  });
 
   // Returns the largest width a line reaches within an expression
   function getFullLineWidth(layer) {
@@ -169,7 +176,7 @@
   };
 
   const initChart = () => {
-    let lineLayers = $displayLayersStore.layers.filter(l => l.type === 'line');
+    let lineLayers = expandedLayers.filter(l => l.type === 'line');
 
     chartHeight = lineLayers.length * 65;
 
@@ -235,6 +242,14 @@
       top: adjustedYScale(layer.id) + yScale.bandwidth()
     };
   }
+
+  function handleTooltipWarning(layerId, expandedLayerId) {
+    tooltip = {
+      text: `${layerId} had too many possible property/value combinations and has been limited to showing ${$propertyValueComboLimitStore} for performance.`,
+      left: 24,
+      top: adjustedYScale(expandedLayerId) + yScale.bandwidth() * 0.75
+    };
+  }
 </script>
 
 <div class="fills-chart">
@@ -298,10 +313,23 @@
           transform="translate(0,
           {adjustedYScale(layer.id) + yScale.bandwidth() / 2})"
         >
-          {#each layer.id.split('/') as idSection, i}
-            <text y={18 * i} x={i > 0 ? 18 : 0}
-              >{#if i > 0}↳{/if}{idSection}</text
-            >
+          {#each layer.id.split('/') as idSection, i}<g>
+              {#if i === 0 && limitHit.includes(idSection)}
+                <circle
+                  cx="6"
+                  cy="-6"
+                  r="6"
+                  fill="red"
+                  on:mouseover={() => handleTooltipWarning(idSection, layer.id)}
+                  on:mouseout={handleTooltipClose}
+                />
+              {/if}
+              <text
+                y={18 * i}
+                x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
+                >{#if i > 0}↳{/if}{idSection}</text
+              >
+            </g>
           {/each}
         </g>
       {/each}
