@@ -132,6 +132,11 @@
   }
 
   $: if (style) {
+    displayLayersStore.set({
+      style: null,
+      layers: [],
+      limitHit: []
+    });
     loadingStore.set({ loading: true, progress: 0 });
     setExpandedLayers(style);
   }
