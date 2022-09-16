@@ -527,7 +527,7 @@ describe('expandLayer', () => {
         }
       }
     ];
-    expect(expandedLayers).toEqual(expandedLayers);
+    expect(expandedLayers).toEqual(expectedLayers);
     expect(comboLimitHit).toBe(false);
   });
 
