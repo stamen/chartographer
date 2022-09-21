@@ -54,7 +54,7 @@
         displayLayersStore.set({
           style,
           layers: expandedLayers,
-          limitHit: limitedExpandedLayerIds
+          limitHit: limitedExpandedLayerIds,
         });
       }
     });
@@ -109,7 +109,7 @@
   function updateBackgroundRect(backgroundRect, backgroundGradient) {
     backgroundSvgData = {
       gradientDefs: backgroundGradient,
-      rect: backgroundRect
+      rect: backgroundRect,
     };
   }
 
@@ -119,7 +119,7 @@
     computedStyleToInlineStyle(svg, {
       recursive: true,
       // Limiting to these properties for now since the function runs much faster
-      properties: ['font-size', 'font-family', 'text-anchor']
+      properties: ['font-size', 'font-family', 'text-anchor'],
     });
 
     svg = new XMLSerializer().serializeToString(svg);
@@ -135,7 +135,7 @@
     displayLayersStore.set({
       style: null,
       layers: [],
-      limitHit: []
+      limitHit: [],
     });
     loadingStore.set({ loading: true, progress: 0 });
     setExpandedLayers(style);

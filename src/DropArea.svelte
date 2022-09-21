@@ -21,7 +21,8 @@
   }
 </script>
 
-<div class='drop-area'
+<div
+  class="drop-area"
   on:dragover={handleDragOver}
   on:dragover={handleDragEnter}
   on:drop={handleDrop}

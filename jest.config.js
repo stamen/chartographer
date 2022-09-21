@@ -1,8 +1,8 @@
 module.exports = {
   transform: {
     '^.+\\.svelte$': 'svelte-jester',
-    '^.+\\.js$': 'babel-jest'
+    '^.+\\.js$': 'babel-jest',
   },
   moduleFileExtensions: ['js', 'svelte'],
-  transformIgnorePatterns: ['node_modules/(?!(mapbox-expression)/)']
+  transformIgnorePatterns: ['node_modules/(?!(mapbox-expression)/)'],
 };

@@ -9,17 +9,13 @@
   export let backgroundSvgData;
 </script>
 
-<div class='tabs-content'>
+<div class="tabs-content">
   {#if selectedTab === 'fill'}
     <FillsChart {style} {updateBackgroundRect} />
-  {:else}
-    {#if selectedTab === 'lines'}
-      <LinesChart {style} {backgroundSvgData} />
-    {:else}
-      {#if selectedTab === 'typography'}
-        <TypographyChart {style} />
-      {/if}
-    {/if}
+  {:else if selectedTab === 'lines'}
+    <LinesChart {style} {backgroundSvgData} />
+  {:else if selectedTab === 'typography'}
+    <TypographyChart {style} />
   {/if}
 </div>
 

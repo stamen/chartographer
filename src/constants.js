@@ -5,5 +5,5 @@ export let MARGIN = {
   bottom: 25,
   left: 250,
   right: 50,
-  top: 25
+  top: 25,
 };

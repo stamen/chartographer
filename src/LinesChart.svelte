@@ -62,7 +62,7 @@
       const [
         expressionType,
         [interpolationType, interpolationBase],
-        [attribute]
+        [attribute],
       ] = width;
       if (
         expressionType === 'interpolate' &&
@@ -74,7 +74,7 @@
         const widthArray = width.slice(3);
         topPoints.push([
           xScale(layerMinZoom),
-          adjustedYScale(layer.id) + yScale.bandwidth() / 2
+          adjustedYScale(layer.id) + yScale.bandwidth() / 2,
         ]);
         for (let i = 0; i < widthArray.length; i += 2) {
           const zoom = widthArray[i];
@@ -84,12 +84,12 @@
 
           topPoints.push([
             xScale(zoom),
-            adjustedYScale(layer.id) - width / 2 + yScale.bandwidth() / 2
+            adjustedYScale(layer.id) - width / 2 + yScale.bandwidth() / 2,
           ]);
           if (width > 0) {
             bottomPoints.push([
               xScale(zoom),
-              adjustedYScale(layer.id) + width / 2 + yScale.bandwidth() / 2
+              adjustedYScale(layer.id) + width / 2 + yScale.bandwidth() / 2,
             ]);
           }
         }
@@ -106,12 +106,12 @@
 
         topPoints.push([
           xScale(zoom),
-          adjustedYScale(layer.id) - width / 2 + yScale.bandwidth() / 2
+          adjustedYScale(layer.id) - width / 2 + yScale.bandwidth() / 2,
         ]);
         if (width > 0) {
           bottomPoints.push([
             xScale(zoom),
-            adjustedYScale(layer.id) + width / 2 + yScale.bandwidth() / 2
+            adjustedYScale(layer.id) + width / 2 + yScale.bandwidth() / 2,
           ]);
         }
       });
@@ -121,19 +121,19 @@
       let layerWidth = 1;
       topPoints.push([
         xScale(layerMinZoom),
-        adjustedYScale(layer.id) - layerWidth / 2 + yScale.bandwidth() / 2
+        adjustedYScale(layer.id) - layerWidth / 2 + yScale.bandwidth() / 2,
       ]);
       topPoints.push([
         xScale(layerMaxZoom),
-        adjustedYScale(layer.id) - layerWidth / 2 + yScale.bandwidth() / 2
+        adjustedYScale(layer.id) - layerWidth / 2 + yScale.bandwidth() / 2,
       ]);
       bottomPoints.push([
         xScale(layerMinZoom),
-        adjustedYScale(layer.id) + layerWidth / 2 + yScale.bandwidth() / 2
+        adjustedYScale(layer.id) + layerWidth / 2 + yScale.bandwidth() / 2,
       ]);
       bottomPoints.push([
         xScale(layerMaxZoom),
-        adjustedYScale(layer.id) + layerWidth / 2 + yScale.bandwidth() / 2
+        adjustedYScale(layer.id) + layerWidth / 2 + yScale.bandwidth() / 2,
       ]);
     }
 
@@ -141,12 +141,12 @@
       if (layerMaxZoom > lastZoom) {
         topPoints.push([
           xScale(layerMaxZoom),
-          adjustedYScale(layer.id) - lastWidth / 2 + yScale.bandwidth() / 2
+          adjustedYScale(layer.id) - lastWidth / 2 + yScale.bandwidth() / 2,
         ]);
         if (lastWidth > 0) {
           bottomPoints.push([
             xScale(layerMaxZoom),
-            adjustedYScale(layer.id) + lastWidth / 2 + yScale.bandwidth() / 2
+            adjustedYScale(layer.id) + lastWidth / 2 + yScale.bandwidth() / 2,
           ]);
         }
       }
@@ -171,7 +171,7 @@
       path: d3.line()(path || []),
       fill: color,
       stroke: strokeColor,
-      strokeWidth: strokeWidth
+      strokeWidth: strokeWidth,
     };
   };
 
@@ -239,7 +239,7 @@
     tooltip = {
       text: JSON.stringify(layer.paint, null, 2),
       left: xScale(MAX_ZOOM) + 10,
-      top: adjustedYScale(layer.id) + yScale.bandwidth()
+      top: adjustedYScale(layer.id) + yScale.bandwidth(),
     };
   }
 
@@ -247,7 +247,7 @@
     tooltip = {
       text: `${layerId} had too many possible property/value combinations and has been limited to showing ${$propertyValueComboLimitStore} for performance.`,
       left: 24,
-      top: adjustedYScale(expandedLayerId) + yScale.bandwidth() * 0.75
+      top: adjustedYScale(expandedLayerId) + yScale.bandwidth() * 0.75,
     };
   }
 </script>
