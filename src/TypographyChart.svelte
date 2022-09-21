@@ -3,8 +3,8 @@
   import { onMount } from 'svelte';
   import mapboxGl from 'mapbox-gl';
   import { getValue as getInterpolatedValue } from './interpolation';
-  import { expandLayers } from './styles/expandLayers';
   import Tooltip from './Tooltip.svelte';
+  import { displayLayersStore } from './stores';
 
   export let style;
   export let minZoom = 0;
@@ -25,22 +25,22 @@
   let layers;
   let xAxisFont;
   let zooms = d3.range(minZoom, maxZoom + 1, 2);
-  
-  const handleTooltipClose = () => { 
+
+  const handleTooltipClose = () => {
     selectedLayerId = null;
     editMode = false;
     labelText = '';
     tooltip = {};
   };
-  const handleHoverTooltipClose = () => hoverTooltip = {};
+  const handleHoverTooltipClose = () => (hoverTooltip = {});
 
-  // XXX These properties aren't currently supported in this chart, this is 
+  // XXX These properties aren't currently supported in this chart, this is
   // likely okay for most uses
   const dataExpressionsDisallowed = [
     'icon-text-fit-padding',
     'symbol-spacing',
     'text-fit-padding',
-    'text-padding',
+    'text-padding'
   ];
 
   $: {
@@ -83,14 +83,23 @@
     if (!layer) return;
     if (displayLayer) {
       const textField = displayLayer?.layout?.['text-field'];
-      labelText = Array.isArray(textField) && textField[0] === 'get' && textField[1] === 'label' ? feature?.properties?.label : textField;
+      labelText =
+        Array.isArray(textField) &&
+        textField[0] === 'get' &&
+        textField[1] === 'label'
+          ? feature?.properties?.label
+          : textField;
     }
 
     tooltip = {
-      text: JSON.stringify({
-        layout: layer.layout,
-        paint: layer.paint,
-      }, null, 2),
+      text: JSON.stringify(
+        {
+          layout: layer.layout,
+          paint: layer.paint
+        },
+        null,
+        2
+      ),
       left: e.point.x,
       top: e.point.y
     };
@@ -110,8 +119,9 @@
       return;
     }
 
-    let details = feature.layer.metadata.parentId ?
-      feature.layer.metadata.parentId : feature.layer.id;
+    let details = feature.layer.metadata.parentId
+      ? feature.layer.metadata.parentId
+      : feature.layer.id;
 
     const { conditions } = feature.layer.metadata;
     if (conditions) {
@@ -124,11 +134,9 @@
           details += `${JSON.stringify(input)} == ${JSON.stringify(value)}`;
         }
       });
-    }
-    else if (feature.layer.metadata.descriptor) {
+    } else if (feature.layer.metadata.descriptor) {
       details += `\n\n${feature.layer.metadata.descriptor}`;
     }
-
 
     hoverTooltip = {
       text: details,
@@ -143,10 +151,7 @@
       properties: { label: `${zoom}` },
       geometry: {
         type: 'Point',
-        coordinates: [
-          xScale(zoom),
-          yScale('x-axis')
-        ]
+        coordinates: [xScale(zoom), yScale('x-axis')]
       }
     }));
 
@@ -159,12 +164,12 @@
       id: 'x-axis',
       source: 'x-axis',
       layout: {
-        "text-font": xAxisFont,
+        'text-font': xAxisFont,
         'icon-allow-overlap': true,
         'symbol-placement': 'point',
         'text-allow-overlap': true,
         'text-field': '{label}',
-        'text-size': 10,
+        'text-size': 10
       },
       paint: {
         'text-color': 'black'
@@ -214,14 +219,8 @@
         geometry: {
           type: 'LineString',
           coordinates: [
-            [
-              xScale(layer.minzoom || minZoom),
-              yScale(layer.id)
-            ],
-            [
-              xScale(layer.maxzoom || maxZoom),
-              yScale(layer.id)
-            ],
+            [xScale(layer.minzoom || minZoom), yScale(layer.id)],
+            [xScale(layer.maxzoom || maxZoom), yScale(layer.id)]
           ]
         }
       };
@@ -244,7 +243,7 @@
         'line-opacity': 0.1
       },
       layout: {},
-      type: 'line',
+      type: 'line'
     });
   }
 
@@ -266,10 +265,7 @@
           },
           geometry: {
             type: 'Point',
-            coordinates: [
-              xScale(zoom),
-              yScale(layer.id)
-            ]
+            coordinates: [xScale(zoom), yScale(layer.id)]
           }
         });
       });
@@ -286,32 +282,37 @@
       // zoom property set above at the feature level
       let paint = {};
       if (layer.paint) {
-        paint = JSON.parse(JSON.stringify(layer.paint).replaceAll('["zoom"]', '["get", "zoom"]'));
+        paint = JSON.parse(
+          JSON.stringify(layer.paint).replaceAll('["zoom"]', '["get", "zoom"]')
+        );
       }
       let layout = {};
       if (layer.layout) {
         layout = Object.fromEntries(
-          Object.entries(layer.layout)
-            .map(([k, v]) => {
-              if (dataExpressionsDisallowed.indexOf(k) >= 0) {
-                return [k, v];
-              }
-              else {
-                return [
-                  k,
-                  JSON.parse(JSON.stringify(v).replaceAll('["zoom"]', '["get", "zoom"]'))
-                ];
-              }
-            })
+          Object.entries(layer.layout).map(([k, v]) => {
+            if (dataExpressionsDisallowed.indexOf(k) >= 0) {
+              return [k, v];
+            } else {
+              return [
+                k,
+                JSON.parse(
+                  JSON.stringify(v).replaceAll('["zoom"]', '["get", "zoom"]')
+                )
+              ];
+            }
+          })
         );
         layout = {
           ...layout,
           'icon-allow-overlap': true, // Add overrides to force visibility
           'symbol-placement': 'point',
-          'text-allow-overlap': true,
+          'text-allow-overlap': true
         };
 
-        if (layer.layout['text-field'] && layer.layout['text-field'][0] !== 'format') {
+        if (
+          layer.layout['text-field'] &&
+          layer.layout['text-field'][0] !== 'format'
+        ) {
           layout['text-field'] = ['get', 'label'];
         }
       }
@@ -324,7 +325,10 @@
         type: layer.type,
         metadata: {
           ...layer.metadata,
-          parentId: (layer.metadata && layer.metadata.parentId) ? layer.metadata.parentId : layer.id
+          parentId:
+            layer.metadata && layer.metadata.parentId
+              ? layer.metadata.parentId
+              : layer.id
         }
       });
     });
@@ -341,10 +345,7 @@
       [bounds.getWest() + xPadding, bounds.getEast() - xPadding]
     );
     yScale = d3.scaleBand(
-      [
-        'x-axis',
-        ...layers.map(({ id }) => id)
-      ],
+      ['x-axis', ...layers.map(({ id }) => id)],
       [bounds.getNorth(), bounds.getSouth() + yPadding]
     );
 
@@ -361,7 +362,7 @@
         glyphs: style.glyphs,
         sprite: style.sprite,
         sources: {},
-        layers: style.layers.filter(l => l.type === 'background'),
+        layers: style.layers.filter(l => l.type === 'background')
       },
       boxZoom: false,
       doubleClickZoom: false,
@@ -377,7 +378,9 @@
   }
 
   function getLayers(style) {
-    const layers = expandLayers(style.layers.filter(layer => layer.type === 'symbol'));
+    const layers = $displayLayersStore.layers.filter(
+      layer => layer.type === 'symbol'
+    );
     return layers;
   }
 
@@ -386,7 +389,7 @@
       let value = labelText;
 
       map.setLayoutProperty(selectedLayerId, 'text-field', value);
-    } 
+    }
     handleTooltipClose();
   };
 
@@ -402,7 +405,7 @@
 </script>
 
 <div class="typography-chart">
-  <div style="width: {width}px; height: {height}px;" id="map"></div>
+  <div style="width: {width}px; height: {height}px;" id="map" />
 
   {#if Object.keys(tooltip).length > 0}
     <Tooltip
@@ -410,13 +413,25 @@
       top={tooltip.top}
       on:close={handleTooltipClose}
     >
-    {#if !editMode}
-      <div class="edit-button"><button on:click={() => { editMode = true; }}>Edit label</button></div>
-    {/if}
-    {#if editMode}
-      <div class="edit-button"><input bind:value={labelText}/><button class="submit-button" disabled={!labelText} on:click={updateSelectedLayerLabel}>Submit</button></div>
-    {/if}
-    <p>{tooltip.text || ''}</p>
+      {#if !editMode}
+        <div class="edit-button">
+          <button
+            on:click={() => {
+              editMode = true;
+            }}>Edit label</button
+          >
+        </div>
+      {/if}
+      {#if editMode}
+        <div class="edit-button">
+          <input bind:value={labelText} /><button
+            class="submit-button"
+            disabled={!labelText}
+            on:click={updateSelectedLayerLabel}>Submit</button
+          >
+        </div>
+      {/if}
+      <p>{tooltip.text || ''}</p>
     </Tooltip>
   {/if}
   {#if Object.keys(hoverTooltip).length > 0}

@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
-  import { expandLayers } from './styles/expandLayers';
+  import { displayLayersStore, propertyValueComboLimitStore } from './stores';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
@@ -15,7 +15,7 @@
   let gradients = [];
   $: tooltip = {};
 
-  const handleTooltipClose = () => tooltip = {};
+  const handleTooltipClose = () => (tooltip = {});
 
   $: {
     style; // Make this block react to the style prop changing
@@ -29,20 +29,36 @@
 
   let zoomLevels = [];
 
-  $: if (style && style.layers) {
-    let layers = style.layers;
-    layers = expandLayers(layers);
-    
+  let expandedLayers = [];
+  let limitHit = [];
+  displayLayersStore.subscribe(value => {
+    expandedLayers = value.layers;
+    limitHit = value.limitHit;
+  });
+
+  const initChart = () => {
+    let layers = expandedLayers;
+
     chartHeight = layers.length * 65;
 
-    xScale = d3.scaleLinear([MIN_ZOOM, MAX_ZOOM], [MARGIN.left, CHART_WIDTH - MARGIN.right]);
-    yScale = d3.scaleBand(layers.map(({ id }) => id), [MARGIN.top, chartHeight - MARGIN.bottom])
+    xScale = d3.scaleLinear(
+      [MIN_ZOOM, MAX_ZOOM],
+      [MARGIN.left, CHART_WIDTH - MARGIN.right]
+    );
+    yScale = d3
+      .scaleBand(
+        layers.map(({ id }) => id),
+        [MARGIN.top, chartHeight - MARGIN.bottom]
+      )
       .padding(0.25);
 
     zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
 
-    const getDrawLayer = (layer) => {
-      const { color: layerColor, gradients: layerGradients } = getColor(layer, xScale);
+    const getDrawLayer = layer => {
+      const { color: layerColor, gradients: layerGradients } = getColor(
+        layer,
+        xScale
+      );
       const { color, strokeColor, strokeWidth } = layerColor;
       gradients = gradients.concat(layerGradients);
 
@@ -50,11 +66,11 @@
         ...layer,
         fill: color,
         stroke: strokeColor,
-        strokeWidth: strokeWidth,
+        strokeWidth: strokeWidth
       };
     };
 
-    layers = layers.map(getDrawLayer)
+    layers = layers.map(getDrawLayer);
 
     // TODO consider combining casing with roads
     rects = layers.map(d => {
@@ -66,19 +82,25 @@
         fill: d.fill,
         stroke: d.stroke,
         strokeWidth: d.strokeWidth,
-        layer: d,
+        layer: d
       };
     });
 
     const backgroundRect = rects.find(rect => rect.layer.type === 'background');
     if (backgroundRect) {
-      const backgroundGradient = gradients.find(g => g.id === backgroundRect.layer.id);
+      const backgroundGradient = gradients.find(
+        g => g.id === backgroundRect.layer.id
+      );
       updateBackgroundRect(backgroundRect, backgroundGradient);
     }
+  };
+
+  $: if (expandedLayers) {
+    initChart();
   }
 
   onMount(() => {
-    document.addEventListener('scroll', () => scrollY = window.scrollY);
+    document.addEventListener('scroll', () => (scrollY = window.scrollY));
   });
 
   function handleClick(layer) {
@@ -86,6 +108,14 @@
       text: JSON.stringify(layer.paint, null, 2),
       left: xScale(MAX_ZOOM) + 10,
       top: yScale(layer.id) + yScale.bandwidth()
+    };
+  }
+
+  function handleTooltipWarning(layerId, expandedLayerId) {
+    tooltip = {
+      text: `${layerId} had too many possible property/value combinations and has been limited to showing ${$propertyValueComboLimitStore} for performance.`,
+      left: 24,
+      top: yScale(expandedLayerId) + yScale.bandwidth() * 0.75
     };
   }
 </script>
@@ -111,7 +141,9 @@
           x={rect.x}
           y={rect.y}
           width={rect.width}
-          height={rect.layer.type === 'background' ? chartHeight - MARGIN.top - MARGIN.bottom : rect.height}
+          height={rect.layer.type === 'background'
+            ? chartHeight - MARGIN.top - MARGIN.bottom
+            : rect.height}
           fill={rect.fill}
           stroke={rect.stroke}
           strokeWidth={rect.strokeWidth}
@@ -122,8 +154,12 @@
     </g>
 
     <g transform="translate(0, {MARGIN.top + scrollY})" class="x-axis">
-      {#each zoomLevels as zoomLevel} 
-        <g class="tick" opacity="1" transform="translate({xScale(zoomLevel)}, 0)">
+      {#each zoomLevels as zoomLevel}
+        <g
+          class="tick"
+          opacity="1"
+          transform="translate({xScale(zoomLevel)}, 0)"
+        >
           <text y="9">
             {zoomLevel}
           </text>
@@ -132,12 +168,35 @@
     </g>
 
     <g transform="translate(0, 0)" class="y-axis">
-      {#each rects as rect} 
-        <g class="tick" opacity="1" transform="translate(0,
-          {yScale(rect.layer.id) + yScale.bandwidth() / 2})">
-            {#each rect.layer.id.split('/') as idSection, i}
-              <text y={18 * i} x={i > 0 ? 18 : 0}>{#if i > 0}↳{/if}{idSection}</text>
-            {/each}
+      {#each rects as rect}
+        <g
+          class="tick"
+          opacity="1"
+          transform="translate(0,
+          {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
+        >
+          {#each rect.layer.id.split('/') as idSection, i}<g>
+              {#if i === 0 && limitHit.includes(idSection)}
+                <circle
+                  cx="6"
+                  cy="-6"
+                  r="6"
+                  fill="red"
+                  on:mouseover={() =>
+                    handleTooltipWarning(idSection, rect.layer.id)}
+                  on:mouseout={handleTooltipClose}
+                />
+              {/if}
+              <text
+                y={18 * i}
+                x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
+              >
+                {#if i > 0}↳{/if}
+
+                {idSection}</text
+              ></g
+            >
+          {/each}
         </g>
       {/each}
     </g>

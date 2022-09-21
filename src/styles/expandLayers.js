@@ -1,11 +1,15 @@
 import cartesian from 'cartesian';
 import { latest } from '@mapbox/mapbox-gl-style-spec';
 import mergeWith from 'lodash.mergewith';
-import merge from 'lodash.merge';
-
+import { propertyValueComboLimitStore } from '../stores';
 import { expression } from '@mapbox/mapbox-gl-style-spec';
 const { isExpression } = expression;
 import { evaluateExpression } from './evaluate-expression';
+
+let comboValueLimit;
+propertyValueComboLimitStore.subscribe(value => {
+  comboValueLimit = value;
+});
 
 const FALLBACKS = {
   string: 'FALLBACK',
@@ -181,10 +185,11 @@ export const getPropertyValues = value => {
     if (valueType === 'object' && Array.isArray(valueType)) {
       valueType = 'array';
     }
-    acc[prop] =
+    const values =
       valueType !== undefined
         ? properties[prop].concat([FALLBACKS[valueType]])
         : properties[prop];
+    acc[prop] = [...new Set(values)];
     return acc;
   }, {});
 
@@ -287,7 +292,8 @@ const createEvaluatedZoomExpression = (
 // Creates a layer for each combination of properties referenced in previous existing layer
 export const expandLayer = layer => {
   const expandedProperties = getExpandableProperties(layer);
-  if (!expandedProperties.length) return [layer];
+  if (!expandedProperties.length)
+    return { expandedLayers: [layer], comboLimitHit: false };
   let zooms = [];
   let propertyPaths = [];
   let properties = {};
@@ -333,6 +339,10 @@ export const expandLayer = layer => {
     return acc;
   }, []);
 
+  const fullComboAmt = propertyCombos.length;
+  propertyCombos = propertyCombos.slice(0, comboValueLimit);
+  const slicedComboAmt = propertyCombos.length;
+
   let nextLayers = [];
 
   for (const combo of propertyCombos) {
@@ -372,16 +382,8 @@ export const expandLayer = layer => {
     nextLayers.push(nextLayer);
   }
 
-  return nextLayers;
+  return {
+    expandedLayers: nextLayers,
+    comboLimitHit: fullComboAmt > slicedComboAmt
+  };
 };
-
-const expandLayers = layers => {
-  const nextLayers = layers.reduce((acc, l) => {
-    acc = acc.concat(expandLayer(l));
-    return acc;
-  }, []);
-
-  return nextLayers;
-};
-
-export { expandLayers };
