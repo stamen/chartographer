@@ -7,6 +7,7 @@
     "dev": "rollup -c -w",
     "start": "sirv public --no-clear",
     "deploy": "gh-pages -d public",
+    "prepare": "husky install",
     "test": "jest test",
     "jest-watch": "jest --watch"
   },
