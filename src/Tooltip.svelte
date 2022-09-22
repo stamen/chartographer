@@ -17,7 +17,7 @@
   {/if}
   <pre>
     <code>
-      <slot></slot>
+      <slot />
     </code>
   </pre>
 </div>
@@ -40,4 +40,3 @@
     padding: 0.5em;
   }
 </style>
-

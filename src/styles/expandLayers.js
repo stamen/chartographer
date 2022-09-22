@@ -16,7 +16,7 @@ const FALLBACKS = {
   number: -1000,
   array: [],
   object: {},
-  boolean: false
+  boolean: false,
 };
 
 const mergeWithCustomizer = (objValue, srcValue) => {
@@ -151,7 +151,7 @@ export const parseConditionalExpression = value => {
       const {
         inputs: nestedInputs,
         outputs: nestedOutputs,
-        properties: nestedProperties
+        properties: nestedProperties,
       } = parseConditionalExpression(output);
 
       outputs.splice(i, 1, ...nestedOutputs);
@@ -163,7 +163,7 @@ export const parseConditionalExpression = value => {
   return {
     inputs,
     outputs: [...new Set(outputs)],
-    properties
+    properties,
   };
 };
 
@@ -195,7 +195,7 @@ export const getPropertyValues = value => {
 
   return {
     propertyValues: properties,
-    zooms
+    zooms,
   };
 };
 
@@ -235,7 +235,7 @@ const evaluateExpressionForProperties = ({
   propertyId,
   value,
   properties,
-  zoom
+  zoom,
 }) => {
   if (propertyId === 'text-field') {
     value = replaceInternalGets(value, Object.keys(properties));
@@ -246,7 +246,7 @@ const evaluateExpressionForProperties = ({
     propertyId,
     properties,
     value,
-    zoom
+    zoom,
   });
   return evaluated;
 };
@@ -278,7 +278,7 @@ const createEvaluatedZoomExpression = (
       propertyId,
       value,
       properties,
-      zoom
+      zoom,
     });
     if (!allowsInterpolate && zoom === 0 && i === 0) {
       expression.push(evaluatedExpression);
@@ -304,7 +304,7 @@ export const expandLayer = layer => {
       key: propertyId,
       properties: propertyData,
       value: propertyValue,
-      zooms: propertyZooms
+      zooms: propertyZooms,
     } = property;
 
     propertyPaths.push([propertyType, propertyId]);
@@ -364,7 +364,7 @@ export const expandLayer = layer => {
         paintOrLayout,
         propertyId,
         value: nextValue,
-        properties: combo
+        properties: combo,
       };
 
       if (zooms.length) {
@@ -384,6 +384,6 @@ export const expandLayer = layer => {
 
   return {
     expandedLayers: nextLayers,
-    comboLimitHit: fullComboAmt > slicedComboAmt
+    comboLimitHit: fullComboAmt > slicedComboAmt,
   };
 };

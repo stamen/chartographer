@@ -34,7 +34,7 @@ self.addEventListener(
           self.postMessage({
             progress,
             expandedLayers: nextLayers,
-            limitedExpandedLayerIds
+            limitedExpandedLayerIds,
           }),
         throttleTime
       );

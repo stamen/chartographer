@@ -62,12 +62,12 @@ const convertToRgbCondition = (val, key) => {
 const convertStylesheetToRgb = createRecurseStyle({
   transformFn: convertToRgb,
   transformCondition: convertToRgbCondition,
-  propertyIds: convertToRgbPropertyIds
+  propertyIds: convertToRgbPropertyIds,
 });
 
 export {
   convertStylesheetToRgb,
   convertToRgb,
   convertToRgbCondition,
-  convertToRgbPropertyIds
+  convertToRgbPropertyIds,
 };

@@ -24,13 +24,13 @@ function serve() {
         ['run', 'start', '--', '--dev'],
         {
           stdio: ['ignore', 'inherit', 'inherit'],
-          shell: true
+          shell: true,
         }
       );
 
       process.on('SIGTERM', toExit);
       process.on('exit', toExit);
-    }
+    },
   };
 }
 
@@ -40,20 +40,20 @@ export default {
     sourcemap: true,
     format: 'iife',
     name: 'app',
-    file: 'public/build/bundle.js'
+    file: 'public/build/bundle.js',
   },
   plugins: [
     svelte({
       compilerOptions: {
         // enable run-time checks when not in production
-        dev: !production
-      }
+        dev: !production,
+      },
     }),
 
     replace({
       'process.env.NODE_ENV': JSON.stringify(
         production ? 'production' : 'development'
-      )
+      ),
     }),
 
     // we'll extract any component CSS out into
@@ -68,7 +68,7 @@ export default {
     // consult the documentation for details:
     // https://github.com/rollup/plugins/tree/master/packages/commonjs
     resolve({
-      dedupe: ['svelte']
+      dedupe: ['svelte'],
     }),
     commonjs(),
 
@@ -83,9 +83,9 @@ export default {
     // If we're building for production (npm run build
     // instead of npm run dev), minify
     production && terser(),
-    webWorkerLoader({})
+    webWorkerLoader({}),
   ],
   watch: {
-    clearScreen: false
-  }
+    clearScreen: false,
+  },
 };

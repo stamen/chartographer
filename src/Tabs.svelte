@@ -4,10 +4,14 @@
   export let selectedTab;
 </script>
 
-<div class='tabs'>
+<div class="tabs">
   <Tab label="fill" on:tabchange selected={selectedTab === 'fill'} />
   <Tab label="lines" on:tabchange selected={selectedTab === 'lines'} />
-  <Tab label="typography" on:tabchange selected={selectedTab === 'typography'} />
+  <Tab
+    label="typography"
+    on:tabchange
+    selected={selectedTab === 'typography'}
+  />
 </div>
 
 <style>
