@@ -158,6 +158,12 @@ export const parseConditionalExpression = value => {
     }
   }
 
+  // If there's a math operation, treat all other values like outputs
+  // for pulling properties out of recursion
+  if (mathOperators.includes(expressionType)) {
+    outputs = value.filter(isHandledConditional);
+  }
+
   for (let i = 0; i < outputs.length; i++) {
     const output = outputs[i];
     if (isHandledConditional(output)) {
