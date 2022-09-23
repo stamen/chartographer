@@ -285,14 +285,27 @@ const createEvaluatedZoomExpression = (
 
   for (let i = 0; i < zooms.length; i++) {
     const zoom = zooms[i];
-    const evaluatedExpression = evaluateExpressionForProperties({
+    let evaluatedExpression = evaluateExpressionForProperties({
       layerType,
       paintOrLayout,
       propertyId,
       value,
       properties,
-      zoom
+      // For evaluation, a zoom of zero returns null
+      // Unclear why this is
+      zoom: zoom === 0 ? 0.1 : zoom
     });
+
+    // The evaluated expression may contain an array, but it's safer to always
+    // wrap in "literal" since we are building it into a scale expression
+    if (
+      propertyId === 'text-font' &&
+      Array.isArray(evaluatedExpression) &&
+      evaluatedExpression[0] !== 'literal'
+    ) {
+      evaluatedExpression = ['literal', evaluatedExpression];
+    }
+
     if (!allowsInterpolate && zoom === 0 && i === 0) {
       expression.push(evaluatedExpression);
     }
