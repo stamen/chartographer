@@ -71,7 +71,7 @@ const getGradientStops = ({
   opacity,
   minZoom,
   maxZoom,
-  xScale
+  xScale,
 }) => {
   const colorInterpolation = isGradient(color) && color[0];
   const opacityInterpolation = isGradient(opacity) && opacity[0];
@@ -124,7 +124,7 @@ const getGradientStops = ({
       gradientStops.push({
         offset: ((xScale(zoomStop) - lineStart) / lineLength) * 100,
         stopColor: colorOutput,
-        stopOpacity: opacityOutput
+        stopOpacity: opacityOutput,
       });
     });
   }
@@ -160,8 +160,8 @@ const getColor = (layer, xScale) => {
       color: {
         color: 'rgba(0, 0, 0, 0)',
         strokeColor: 'rgba(0, 0, 0, 0)',
-        strokeWidth
-      }
+        strokeWidth,
+      },
     };
   }
 
@@ -197,7 +197,7 @@ const getColor = (layer, xScale) => {
     opacity,
     minZoom,
     maxZoom,
-    xScale
+    xScale,
   });
 
   if (gradientStops.length > 1) {
@@ -209,9 +209,9 @@ const getColor = (layer, xScale) => {
         stops: gradientStops.map(stop => ({
           offset: `${stop.offset}%`,
           stopColor: stop.stopColor,
-          stopOpacity: stop.stopOpacity
-        }))
-      }
+          stopOpacity: stop.stopOpacity,
+        })),
+      },
     ];
 
     color = `url(#${gradientId})`;

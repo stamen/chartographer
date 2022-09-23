@@ -38,20 +38,20 @@ const evaluateExpression = ({
   propertyId,
   properties,
   value,
-  zoom
+  zoom,
 }) => {
   const initialKey = `${propertyType}_${layerType}`;
   const propertySpec = latest[initialKey][propertyId];
   const feature = {
     type: 'Feature',
     properties,
-    geometry: null
+    geometry: null,
   };
 
   let nextValue = Expression.parse(value, propertySpec.type).evaluate(
     feature,
     zoom && {
-      zoom
+      zoom,
     }
   );
 

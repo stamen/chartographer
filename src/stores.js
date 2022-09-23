@@ -7,5 +7,5 @@ export const loadingStore = writable({ loading: false, progress: null });
 export const displayLayersStore = writable({
   style: null,
   layers: [],
-  limitHit: []
+  limitHit: [],
 });

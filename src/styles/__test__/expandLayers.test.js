@@ -2,7 +2,7 @@ import {
   getPropertyValues,
   parseConditionalExpression,
   parseScaleExpression,
-  expandLayer
+  expandLayer,
 } from '../expandLayers';
 
 describe('getPropertyValues', () => {
@@ -12,7 +12,7 @@ describe('getPropertyValues', () => {
     const actual = getPropertyValues(expression);
     const expected = {
       propertyValues: { class: ['grass', 'FALLBACK'] },
-      zooms: []
+      zooms: [],
     };
     expect(actual).toEqual(expected);
   });
@@ -25,15 +25,15 @@ describe('getPropertyValues', () => {
       3,
       ['match', ['get', 'class'], 'grass', 'green', 'red'],
       5,
-      ['match', ['get', 'type'], ['water', 'landmark'], 'blue', 'purple']
+      ['match', ['get', 'type'], ['water', 'landmark'], 'blue', 'purple'],
     ];
     const actual = getPropertyValues(expression);
     const expected = {
       propertyValues: {
         class: ['grass', 'FALLBACK'],
-        type: ['water', 'landmark', 'FALLBACK']
+        type: ['water', 'landmark', 'FALLBACK'],
       },
-      zooms: [3, 5]
+      zooms: [3, 5],
     };
     expect(actual).toEqual(expected);
   });
@@ -58,14 +58,14 @@ describe('parseScaleExpression', () => {
         'blue',
         ['==', ['get', 'type'], 'fire'],
         'red',
-        'black'
-      ]
+        'black',
+      ],
     ];
     const actual = parseScaleExpression(expression);
     const expected = {
       zooms: [5, 10],
       outputs: ['green', 'purple', 'blue', 'red', 'black'],
-      properties: { class: ['grass', 'grass', 'water'], type: ['fire'] }
+      properties: { class: ['grass', 'grass', 'water'], type: ['fire'] },
     };
     expect(actual).toEqual(expected);
   });
@@ -80,7 +80,7 @@ describe('parseConditionalExpression', () => {
     const expected = {
       inputs: ['grass'],
       outputs: ['green', 'red'],
-      properties: { class: ['grass'] }
+      properties: { class: ['grass'] },
     };
     expect(actual).toEqual(expected);
   });
@@ -92,7 +92,7 @@ describe('parseConditionalExpression', () => {
       'green',
       ['==', ['get', 'class'], 'water'],
       'blue',
-      'red'
+      'red',
     ];
     const actual = parseConditionalExpression(expression);
     const expected = {
@@ -100,10 +100,10 @@ describe('parseConditionalExpression', () => {
         ['==', ['get', 'class'], 'grass'],
         ['==', ['get', 'class'], 'water'],
         ['==', ['get', 'class'], 'grass'],
-        ['==', ['get', 'class'], 'water']
+        ['==', ['get', 'class'], 'water'],
       ],
       outputs: ['green', 'blue', 'red'],
-      properties: { class: ['grass', 'water'] }
+      properties: { class: ['grass', 'water'] },
     };
     expect(actual).toEqual(expected);
   });
@@ -114,13 +114,13 @@ describe('parseConditionalExpression', () => {
       ['get', 'class'],
       'grass',
       ['match', ['get', 'type'], 'spring', 'green', 'brown'],
-      'red'
+      'red',
     ];
     const actual = parseConditionalExpression(expression);
     const expected = {
       inputs: ['grass', 'spring'],
       outputs: ['green', 'brown', 'red'],
-      properties: { class: ['grass'], type: ['spring'] }
+      properties: { class: ['grass'], type: ['spring'] },
     };
     expect(actual).toEqual(expected);
   });
@@ -147,10 +147,10 @@ describe('expandLayer', () => {
             ['get', 'class'],
             ['blue', 'near-blue'],
             'blue',
-            ['match', ['get', 'class'], 'green', 'green', 'black']
+            ['match', ['get', 'class'], 'green', 'green', 'black'],
           ],
           10,
-          'red'
+          'red',
         ],
         'fill-opacity': [
           'step',
@@ -159,10 +159,10 @@ describe('expandLayer', () => {
           2,
           ['match', ['get', 'type'], 'clear', 0.2, 1],
           7,
-          1
+          1,
         ],
-        'fill-antialias': false
-      }
+        'fill-antialias': false,
+      },
     };
     const { expandedLayers, comboLimitHit } = expandLayer(layer);
     const expectedLayers = [
@@ -189,7 +189,7 @@ describe('expandLayer', () => {
             7,
             'rgba(102, 0, 153, 1)',
             7.1,
-            'rgba(107, 0, 148, 1)'
+            'rgba(107, 0, 148, 1)',
           ],
           'fill-opacity': [
             'interpolate',
@@ -206,10 +206,10 @@ describe('expandLayer', () => {
             7,
             1,
             7.1,
-            1
+            1,
           ],
-          'fill-antialias': false
-        }
+          'fill-antialias': false,
+        },
       },
       {
         id: 'test-layer/class: "blue"/type: "FALLBACK"',
@@ -234,7 +234,7 @@ describe('expandLayer', () => {
             7,
             'rgba(102, 0, 153, 1)',
             7.1,
-            'rgba(107, 0, 148, 1)'
+            'rgba(107, 0, 148, 1)',
           ],
           'fill-opacity': [
             'interpolate',
@@ -251,10 +251,10 @@ describe('expandLayer', () => {
             7,
             1,
             7.1,
-            1
+            1,
           ],
-          'fill-antialias': false
-        }
+          'fill-antialias': false,
+        },
       },
       {
         id: 'test-layer/class: "near-blue"/type: "clear"',
@@ -279,7 +279,7 @@ describe('expandLayer', () => {
             7,
             'rgba(102, 0, 153, 1)',
             7.1,
-            'rgba(107, 0, 148, 1)'
+            'rgba(107, 0, 148, 1)',
           ],
           'fill-opacity': [
             'interpolate',
@@ -296,10 +296,10 @@ describe('expandLayer', () => {
             7,
             1,
             7.1,
-            1
+            1,
           ],
-          'fill-antialias': false
-        }
+          'fill-antialias': false,
+        },
       },
       {
         id: 'test-layer/class: "near-blue"/type: "FALLBACK"',
@@ -324,7 +324,7 @@ describe('expandLayer', () => {
             7,
             'rgba(102, 0, 153, 1)',
             7.1,
-            'rgba(107, 0, 148, 1)'
+            'rgba(107, 0, 148, 1)',
           ],
           'fill-opacity': [
             'interpolate',
@@ -341,10 +341,10 @@ describe('expandLayer', () => {
             7,
             1,
             7.1,
-            1
+            1,
           ],
-          'fill-antialias': false
-        }
+          'fill-antialias': false,
+        },
       },
       {
         id: 'test-layer/class: "green"/type: "clear"',
@@ -369,7 +369,7 @@ describe('expandLayer', () => {
             7,
             'rgba(102, 77, 0, 1)',
             7.1,
-            'rgba(107, 74, 0, 1)'
+            'rgba(107, 74, 0, 1)',
           ],
           'fill-opacity': [
             'interpolate',
@@ -386,10 +386,10 @@ describe('expandLayer', () => {
             7,
             1,
             7.1,
-            1
+            1,
           ],
-          'fill-antialias': false
-        }
+          'fill-antialias': false,
+        },
       },
       {
         id: 'test-layer/class: "green"/type: "FALLBACK"',
@@ -414,7 +414,7 @@ describe('expandLayer', () => {
             7,
             'rgba(102, 77, 0, 1)',
             7.1,
-            'rgba(107, 74, 0, 1)'
+            'rgba(107, 74, 0, 1)',
           ],
           'fill-opacity': [
             'interpolate',
@@ -431,10 +431,10 @@ describe('expandLayer', () => {
             7,
             1,
             7.1,
-            1
+            1,
           ],
-          'fill-antialias': false
-        }
+          'fill-antialias': false,
+        },
       },
       {
         id: 'test-layer/class: "FALLBACK"/type: "clear"',
@@ -459,7 +459,7 @@ describe('expandLayer', () => {
             7,
             'rgba(102, 0, 0, 1)',
             7.1,
-            'rgba(107, 0, 0, 1)'
+            'rgba(107, 0, 0, 1)',
           ],
           'fill-opacity': [
             'interpolate',
@@ -476,10 +476,10 @@ describe('expandLayer', () => {
             7,
             1,
             7.1,
-            1
+            1,
           ],
-          'fill-antialias': false
-        }
+          'fill-antialias': false,
+        },
       },
       {
         id: 'test-layer/class: "FALLBACK"/type: "FALLBACK"',
@@ -504,7 +504,7 @@ describe('expandLayer', () => {
             7,
             'rgba(102, 0, 0, 1)',
             7.1,
-            'rgba(107, 0, 0, 1)'
+            'rgba(107, 0, 0, 1)',
           ],
           'fill-opacity': [
             'interpolate',
@@ -521,11 +521,11 @@ describe('expandLayer', () => {
             7,
             1,
             7.1,
-            1
+            1,
           ],
-          'fill-antialias': false
-        }
-      }
+          'fill-antialias': false,
+        },
+      },
     ];
     expect(expandedLayers).toEqual(expectedLayers);
     expect(comboLimitHit).toBe(false);
@@ -552,11 +552,11 @@ describe('expandLayer', () => {
               'secondary',
               'tertiary',
               'minor',
-              'service'
-            ]
-          ]
+              'service',
+            ],
+          ],
         ],
-        ['==', ['get', 'brunnel'], 'tunnel']
+        ['==', ['get', 'brunnel'], 'tunnel'],
       ],
       layout: {
         'line-cap': 'round',
@@ -582,13 +582,13 @@ describe('expandLayer', () => {
               2,
               'minor',
               1,
-              0
-            ]
+              0,
+            ],
           ],
           ['*', 2, ['coalesce', ['get', 'expressway'], 0]],
-          ['coalesce', ['get', 'toll'], 0]
+          ['coalesce', ['get', 'toll'], 0],
         ],
-        visibility: 'visible'
+        visibility: 'visible',
       },
       paint: {
         'line-opacity': [
@@ -599,7 +599,7 @@ describe('expandLayer', () => {
             ['coalesce', ['get', 'ramp'], 0],
             1,
             0,
-            ['match', ['get', 'network'], 'us-interstate', 1, 0]
+            ['match', ['get', 'network'], 'us-interstate', 1, 0],
           ],
           5,
           [
@@ -607,7 +607,7 @@ describe('expandLayer', () => {
             ['coalesce', ['get', 'ramp'], 0],
             1,
             0,
-            ['match', ['get', 'class'], ['motorway', 'trunk'], 1, 0]
+            ['match', ['get', 'class'], ['motorway', 'trunk'], 1, 0],
           ],
           7,
           ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], 1, 0],
@@ -617,7 +617,7 @@ describe('expandLayer', () => {
             ['get', 'class'],
             ['motorway', 'trunk', 'primary', 'secondary'],
             1,
-            0
+            0,
           ],
           11,
           [
@@ -625,7 +625,7 @@ describe('expandLayer', () => {
             ['get', 'class'],
             ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'],
             1,
-            0
+            0,
           ],
           12,
           ['match', ['get', 'class'], 'service', 0, 1],
@@ -635,10 +635,10 @@ describe('expandLayer', () => {
             ['get', 'class'],
             'service',
             ['match', ['get', 'service'], ['parking_aisle', 'driveway'], 0, 1],
-            1
+            1,
           ],
           15,
-          1
+          1,
         ],
         'line-color': [
           'match',
@@ -653,7 +653,7 @@ describe('expandLayer', () => {
               ['coalesce', ['get', 'toll'], 0],
               1,
               'hsl(48, 71%, 90%)',
-              'hsl(0, 71%, 90%)'
+              'hsl(0, 71%, 90%)',
             ],
             'trunk',
             [
@@ -661,15 +661,15 @@ describe('expandLayer', () => {
               ['coalesce', ['get', 'toll'], 0],
               1,
               'hsl(48, 77%, 90%)',
-              'hsl(0, 77%, 90%)'
+              'hsl(0, 77%, 90%)',
             ],
             [
               'match',
               ['coalesce', ['get', 'toll'], 0],
               1,
               'hsl(48, 100%, 95%)',
-              'hsl(0, 0%, 95%)'
-            ]
+              'hsl(0, 0%, 95%)',
+            ],
           ],
           [
             'match',
@@ -684,24 +684,24 @@ describe('expandLayer', () => {
                 ['coalesce', ['get', 'toll'], 0],
                 1,
                 'hsl(48, 95%, 95%)',
-                'hsl(0, 95%, 95%)'
+                'hsl(0, 95%, 95%)',
               ],
               [
                 'match',
                 ['coalesce', ['get', 'toll'], 0],
                 1,
                 'hsl(48, 77%, 50%)',
-                'hsl(0, 77%, 50%)'
-              ]
+                'hsl(0, 77%, 50%)',
+              ],
             ],
             [
               'match',
               ['coalesce', ['get', 'toll'], 0],
               1,
               'hsl(48, 100%, 75%)',
-              'hsl(0, 100%, 100%)'
-            ]
-          ]
+              'hsl(0, 100%, 100%)',
+            ],
+          ],
         ],
         'line-width': [
           'interpolate',
@@ -724,7 +724,7 @@ describe('expandLayer', () => {
                 ['coalesce', ['get', 'ramp'], 0],
                 1,
                 0.3,
-                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6]
+                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6],
               ],
               'tertiary',
               ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.25, 0.5],
@@ -736,10 +736,10 @@ describe('expandLayer', () => {
                 ['get', 'service'],
                 ['parking_aisle', 'driveway'],
                 0.15,
-                0.2
+                0.2,
               ],
-              0.2
-            ]
+              0.2,
+            ],
           ],
           9,
           [
@@ -755,7 +755,7 @@ describe('expandLayer', () => {
               ['coalesce', ['get', 'ramp'], 0],
               1,
               0.3,
-              ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6]
+              ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6],
             ],
             'tertiary',
             ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.25, 0.5],
@@ -767,9 +767,9 @@ describe('expandLayer', () => {
               ['get', 'service'],
               ['parking_aisle', 'driveway'],
               0.15,
-              0.2
+              0.2,
             ],
-            0.2
+            0.2,
           ],
           12,
           [
@@ -779,7 +779,7 @@ describe('expandLayer', () => {
               ['get', 'class'],
               'motorway',
               3.2,
-              ['match', ['coalesce', ['get', 'expressway'], 0], 1, 3.5, 4]
+              ['match', ['coalesce', ['get', 'expressway'], 0], 1, 3.5, 4],
             ],
             [
               'match',
@@ -794,7 +794,7 @@ describe('expandLayer', () => {
                 ['coalesce', ['get', 'ramp'], 0],
                 1,
                 0.3,
-                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6]
+                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6],
               ],
               'tertiary',
               ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.25, 0.5],
@@ -806,10 +806,10 @@ describe('expandLayer', () => {
                 ['get', 'service'],
                 ['parking_aisle', 'driveway'],
                 0.15,
-                0.2
+                0.2,
               ],
-              0.2
-            ]
+              0.2,
+            ],
           ],
           20,
           [
@@ -828,7 +828,7 @@ describe('expandLayer', () => {
                 ['coalesce', ['get', 'ramp'], 0],
                 1,
                 0.3,
-                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6]
+                ['match', ['coalesce', ['get', 'expressway'], 0], 1, 0.7, 0.6],
               ],
               'tertiary',
               ['match', ['coalesce', ['get', 'ramp'], 0], 1, 0.25, 0.5],
@@ -840,14 +840,14 @@ describe('expandLayer', () => {
                 ['get', 'service'],
                 ['parking_aisle', 'driveway'],
                 0.15,
-                0.2
+                0.2,
               ],
-              0.2
-            ]
-          ]
+              0.2,
+            ],
+          ],
         ],
-        'line-blur': 0.5
-      }
+        'line-blur': 0.5,
+      },
     };
     const { expandedLayers, comboLimitHit } = expandLayer(layer);
     expect(expandedLayers.length).toEqual(10);

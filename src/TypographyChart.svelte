@@ -40,7 +40,7 @@
     'icon-text-fit-padding',
     'symbol-spacing',
     'text-fit-padding',
-    'text-padding'
+    'text-padding',
   ];
 
   $: {
@@ -95,13 +95,13 @@
       text: JSON.stringify(
         {
           layout: layer.layout,
-          paint: layer.paint
+          paint: layer.paint,
         },
         null,
         2
       ),
       left: e.point.x,
-      top: e.point.y
+      top: e.point.y,
     };
     selectedLayerId = layer.id;
   }
@@ -141,7 +141,7 @@
     hoverTooltip = {
       text: details,
       left: e.point.x + 25,
-      top: e.point.y
+      top: e.point.y,
     };
   }
 
@@ -151,13 +151,13 @@
       properties: { label: `${zoom}` },
       geometry: {
         type: 'Point',
-        coordinates: [xScale(zoom), yScale('x-axis')]
-      }
+        coordinates: [xScale(zoom), yScale('x-axis')],
+      },
     }));
 
     map.addSource('x-axis', {
       type: 'geojson',
-      data: { type: 'FeatureCollection', features }
+      data: { type: 'FeatureCollection', features },
     });
 
     map.addLayer({
@@ -169,12 +169,12 @@
         'symbol-placement': 'point',
         'text-allow-overlap': true,
         'text-field': '{label}',
-        'text-size': 10
+        'text-size': 10,
       },
       paint: {
-        'text-color': 'black'
+        'text-color': 'black',
       },
-      type: 'symbol'
+      type: 'symbol',
     });
   }
 
@@ -220,9 +220,9 @@
           type: 'LineString',
           coordinates: [
             [xScale(layer.minzoom || minZoom), yScale(layer.id)],
-            [xScale(layer.maxzoom || maxZoom), yScale(layer.id)]
-          ]
-        }
+            [xScale(layer.maxzoom || maxZoom), yScale(layer.id)],
+          ],
+        },
       };
     });
 
@@ -230,8 +230,8 @@
       type: 'geojson',
       data: {
         type: 'FeatureCollection',
-        features
-      }
+        features,
+      },
     });
 
     map.addLayer({
@@ -240,10 +240,10 @@
       paint: {
         'line-width': 15,
         'line-color': ['get', 'color'],
-        'line-opacity': 0.1
+        'line-opacity': 0.1,
       },
       layout: {},
-      type: 'line'
+      type: 'line',
     });
   }
 
@@ -261,12 +261,12 @@
           type: 'Feature',
           properties: {
             label: getLabel(layer),
-            zoom
+            zoom,
           },
           geometry: {
             type: 'Point',
-            coordinates: [xScale(zoom), yScale(layer.id)]
-          }
+            coordinates: [xScale(zoom), yScale(layer.id)],
+          },
         });
       });
 
@@ -274,8 +274,8 @@
         type: 'geojson',
         data: {
           type: 'FeatureCollection',
-          features
-        }
+          features,
+        },
       });
 
       // Replace zoom-dependent style expressions with expressions that use the
@@ -297,7 +297,7 @@
                 k,
                 JSON.parse(
                   JSON.stringify(v).replaceAll('["zoom"]', '["get", "zoom"]')
-                )
+                ),
               ];
             }
           })
@@ -306,7 +306,7 @@
           ...layout,
           'icon-allow-overlap': true, // Add overrides to force visibility
           'symbol-placement': 'point',
-          'text-allow-overlap': true
+          'text-allow-overlap': true,
         };
 
         if (
@@ -328,8 +328,8 @@
           parentId:
             layer.metadata && layer.metadata.parentId
               ? layer.metadata.parentId
-              : layer.id
-        }
+              : layer.id,
+        },
       });
     });
   }
@@ -362,14 +362,14 @@
         glyphs: style.glyphs,
         sprite: style.sprite,
         sources: {},
-        layers: style.layers.filter(l => l.type === 'background')
+        layers: style.layers.filter(l => l.type === 'background'),
       },
       boxZoom: false,
       doubleClickZoom: false,
       dragPan: false,
       scrollZoom: false,
       center: [0, 10],
-      zoom: 14
+      zoom: 14,
     });
 
     map.on('load', draw);

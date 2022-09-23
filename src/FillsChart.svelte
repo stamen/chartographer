@@ -66,7 +66,7 @@
         ...layer,
         fill: color,
         stroke: strokeColor,
-        strokeWidth: strokeWidth
+        strokeWidth: strokeWidth,
       };
     };
 
@@ -82,7 +82,7 @@
         fill: d.fill,
         stroke: d.stroke,
         strokeWidth: d.strokeWidth,
-        layer: d
+        layer: d,
       };
     });
 
@@ -107,7 +107,7 @@
     tooltip = {
       text: JSON.stringify(layer.paint, null, 2),
       left: xScale(MAX_ZOOM) + 10,
-      top: yScale(layer.id) + yScale.bandwidth()
+      top: yScale(layer.id) + yScale.bandwidth(),
     };
   }
 
@@ -115,7 +115,7 @@
     tooltip = {
       text: `${layerId} had too many possible property/value combinations and has been limited to showing ${$propertyValueComboLimitStore} for performance.`,
       left: 24,
-      top: yScale(expandedLayerId) + yScale.bandwidth() * 0.75
+      top: yScale(expandedLayerId) + yScale.bandwidth() * 0.75,
     };
   }
 </script>
