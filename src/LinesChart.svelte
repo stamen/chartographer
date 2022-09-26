@@ -45,7 +45,16 @@
   function getFullLineWidth(layer) {
     const lineWidth = layer?.paint?.['line-width'];
     if (!lineWidth) return 1;
-    return Math.max(...gatherOutputs(lineWidth));
+
+    let outputs = gatherOutputs(lineWidth);
+
+    if (!outputs.every(output => typeof output === 'number')) {
+      console.warn(
+        'Outputs of line-width expression contain non-numerical values. This indicates a problem in expanding layers.'
+      );
+      outputs = [1];
+    }
+    return Math.max(...outputs);
   }
 
   function getPath(layer) {

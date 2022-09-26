@@ -1,8 +1,7 @@
 import cartesian from 'cartesian';
-import { latest } from '@mapbox/mapbox-gl-style-spec';
 import mergeWith from 'lodash.mergewith';
 import { propertyValueComboLimitStore } from '../stores';
-import { expression } from '@mapbox/mapbox-gl-style-spec';
+import { expression, latest } from '@mapbox/mapbox-gl-style-spec';
 const { isExpression } = expression;
 import { evaluateExpression } from './evaluate-expression';
 
@@ -25,8 +24,22 @@ const mergeWithCustomizer = (objValue, srcValue) => {
   }
 };
 
+// Math operators from the style spec
+const mathOperators = Object.entries(
+  latest?.expression_name?.values ?? {}
+)?.reduce((acc, kv) => {
+  const [k, v] = kv;
+  if (v?.group === 'Math') {
+    acc.push(k);
+  }
+  return acc;
+}, []);
+
 export const isHandledConditional = value => {
   if (!Array.isArray(value)) return false;
+  if (mathOperators.includes(value[0])) {
+    return value.some(v => isHandledConditional(v));
+  }
   return value[0] === 'match' || value[0] === 'case';
 };
 
@@ -143,6 +156,12 @@ export const parseConditionalExpression = value => {
       properties = { [property]: inputs.flat(Infinity) };
       break;
     }
+  }
+
+  // If there's a math operation, treat all other values like outputs
+  // for pulling properties out of recursion
+  if (mathOperators.includes(expressionType)) {
+    outputs = value.filter(isHandledConditional);
   }
 
   for (let i = 0; i < outputs.length; i++) {
@@ -272,14 +291,27 @@ const createEvaluatedZoomExpression = (
 
   for (let i = 0; i < zooms.length; i++) {
     const zoom = zooms[i];
-    const evaluatedExpression = evaluateExpressionForProperties({
+    let evaluatedExpression = evaluateExpressionForProperties({
       layerType,
       paintOrLayout,
       propertyId,
       value,
       properties,
-      zoom,
+      // For evaluation, a zoom of zero returns null
+      // Unclear why this is
+      zoom: zoom === 0 ? 0.1 : zoom,
     });
+
+    // The evaluated expression may contain an array, but it's safer to always
+    // wrap in "literal" since we are building it into a scale expression
+    if (
+      propertyId === 'text-font' &&
+      Array.isArray(evaluatedExpression) &&
+      evaluatedExpression[0] !== 'literal'
+    ) {
+      evaluatedExpression = ['literal', evaluatedExpression];
+    }
+
     if (!allowsInterpolate && zoom === 0 && i === 0) {
       expression.push(evaluatedExpression);
     }
@@ -379,6 +411,7 @@ export const expandLayer = layer => {
         nextLayer[paintOrLayout][propertyId] = nextValue;
       }
     }
+
     nextLayers.push(nextLayer);
   }
 
