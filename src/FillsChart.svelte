@@ -3,16 +3,29 @@
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
-  import { displayLayersStore, propertyValueComboLimitStore } from './stores';
+  import {
+    displayLayersStore,
+    propertyValueComboLimitStore,
+    svgStore,
+  } from './stores';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
   export let updateBackgroundRect;
 
-  let chartHeight;
+  let chartHeight = $svgStore?.fills?.chartHeight;
+  let xScale = $svgStore?.fills?.xScale;
+  let yScale = $svgStore?.fills?.yScale;
 
-  let rects = [];
-  let gradients = [];
+  let rects = $svgStore?.fills?.svgs ?? [];
+  let gradients = $svgStore?.fills?.gradients ?? [];
+
+  let expandedLayers = $displayLayersStore?.layers ?? [];
+  let limitHit = $displayLayersStore?.limitHit ?? [];
+
+  let zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
+  let scrollY = 0;
+
   $: tooltip = {};
 
   const handleTooltipClose = () => (tooltip = {});
@@ -21,20 +34,6 @@
     style; // Make this block react to the style prop changing
     handleTooltipClose();
   }
-
-  let xScale;
-  let yScale;
-
-  let scrollY = 0;
-
-  let zoomLevels = [];
-
-  let expandedLayers = [];
-  let limitHit = [];
-  displayLayersStore.subscribe(value => {
-    expandedLayers = value.layers;
-    limitHit = value.limitHit;
-  });
 
   const initChart = () => {
     let layers = expandedLayers;
@@ -51,8 +50,6 @@
         [MARGIN.top, chartHeight - MARGIN.bottom]
       )
       .padding(0.25);
-
-    zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
 
     const getDrawLayer = layer => {
       const { color: layerColor, gradients: layerGradients } = getColor(
@@ -93,10 +90,17 @@
       );
       updateBackgroundRect(backgroundRect, backgroundGradient);
     }
+
+    svgStore.update(value => ({
+      ...value,
+      fills: { svgs: rects, gradients, chartHeight, yScale, xScale },
+    }));
   };
 
-  $: if (expandedLayers) {
-    initChart();
+  $: {
+    if (expandedLayers && !rects.length) {
+      initChart();
+    }
   }
 
   onMount(() => {

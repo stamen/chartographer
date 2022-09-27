@@ -4,15 +4,31 @@
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
   import { gatherOutputs } from './gather-outputs';
-  import { displayLayersStore, propertyValueComboLimitStore } from './stores';
+  import {
+    displayLayersStore,
+    propertyValueComboLimitStore,
+    svgStore,
+  } from './stores';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
 
   export let style;
   export let backgroundSvgData;
 
-  let chartHeight;
+  let chartHeight = $svgStore?.lines?.chartHeight;
+  let xScale = $svgStore?.lines?.xScale;
+  let yScale = $svgStore?.lines?.yScale;
+  let adjustedYScale = $svgStore?.lines?.yScale;
 
-  let gradients = [];
+  let gradients = $svgStore?.lines?.gradients ?? [];
+  let svgLayers = $svgStore?.lines?.svgs ?? [];
+  let backgroundRect = $svgStore?.lines?.background;
+
+  let expandedLayers = $displayLayersStore?.layers ?? [];
+  let limitHit = $displayLayersStore?.limitHit ?? [];
+
+  let zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
+  let scrollY = 0;
+
   $: tooltip = {};
 
   const handleTooltipClose = () => (tooltip = {});
@@ -21,25 +37,6 @@
     style; // Make this block react to the style prop changing
     handleTooltipClose();
   }
-
-  let xScale;
-  let yScale;
-  let adjustedYScale;
-
-  let scrollY = 0;
-
-  let zoomLevels = [];
-
-  let layers;
-
-  let backgroundRect;
-
-  let expandedLayers = [];
-  let limitHit = [];
-  displayLayersStore.subscribe(value => {
-    expandedLayers = value.layers;
-    limitHit = value.limitHit;
-  });
 
   // Returns the largest width a line reaches within an expression
   function getFullLineWidth(layer) {
@@ -226,17 +223,28 @@
     // Adjusted yScale function to use throughout
     adjustedYScale = layerId => yScaleObj[layerId];
 
-    zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
-
-    layers = lineLayers.map(getDrawLayer);
+    svgLayers = lineLayers.map(getDrawLayer);
 
     backgroundRect = backgroundSvgData.rect;
     if (backgroundSvgData.gradientDefs) {
       gradients.push(backgroundSvgData.gradientDefs);
     }
+
+    svgStore.update(value => ({
+      ...value,
+      lines: {
+        svgs: svgLayers,
+        gradients,
+        backgroundRect,
+        chartHeight,
+        yScale,
+        adjustedYScale,
+        xScale,
+      },
+    }));
   };
 
-  $: if (style && style.layers) {
+  $: if (expandedLayers && !svgLayers.length) {
     initChart();
   }
 
@@ -289,7 +297,7 @@
           rx="20"
         />
       {/if}
-      {#each layers as layer}
+      {#each svgLayers as layer}
         <path
           d={layer.path}
           fill={layer.fill}
@@ -315,7 +323,7 @@
     </g>
 
     <g transform="translate(0, 0)" class="y-axis">
-      {#each layers as layer}
+      {#each svgLayers as layer}
         <g
           class="tick"
           opacity="1"

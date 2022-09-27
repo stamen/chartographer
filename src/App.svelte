@@ -10,7 +10,13 @@
   import ProgressBar from './ProgressBar.svelte';
   import computedStyleToInlineStyle from 'computed-style-to-inline-style';
   import { convertStylesheetToRgb } from './convert-colors';
-  import { loadingStore, displayLayersStore } from './stores';
+  import {
+    loadingStore,
+    displayLayersStore,
+    displayLayersStoreInitialState,
+    svgStore,
+    svgStoreInitialState,
+  } from './stores';
   import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
 
   export let selectedTab;
@@ -132,11 +138,8 @@
   }
 
   $: if (style) {
-    displayLayersStore.set({
-      style: null,
-      layers: [],
-      limitHit: [],
-    });
+    displayLayersStore.set(displayLayersStoreInitialState);
+    svgStore.set(svgStoreInitialState);
     loadingStore.set({ loading: true, progress: 0 });
     setExpandedLayers(style);
   }
