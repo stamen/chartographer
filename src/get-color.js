@@ -100,23 +100,23 @@ const getGradientStops = ({
         : opacity;
 
       if (Array.isArray(colorOutput)) {
-        console.warn(
-          `${layerId}: Unhandled data expression, ${JSON.stringify(
-            colorOutput,
-            null,
-            2
-          )}`
-        );
+        // console.warn(
+        //   `${layerId}: Unhandled data expression, ${JSON.stringify(
+        //     colorOutput,
+        //     null,
+        //     2
+        //   )}`
+        // );
         colorOutput = 'black';
       }
       if (Array.isArray(opacityOutput)) {
-        console.warn(
-          `${layerId}: Unhandled data expression, ${JSON.stringify(
-            opacityOutput,
-            null,
-            2
-          )}`
-        );
+        // console.warn(
+        //   `${layerId}: Unhandled data expression, ${JSON.stringify(
+        //     opacityOutput,
+        //     null,
+        //     2
+        //   )}`
+        // );
         opacityOutput = 1;
       }
       opacityOutput = parseFloat(opacityOutput.toFixed(2));

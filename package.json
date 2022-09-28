@@ -40,6 +40,7 @@
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.0.0",
     "@mapbox/mapbox-gl-style-spec": "^13.23.1",
+    "@sveltejs/svelte-virtual-list": "^3.0.1",
     "cartesian": "^1.0.1",
     "color": "^4.2.3",
     "computed-style-to-inline-style": "^3.0.0",

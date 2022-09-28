@@ -9,9 +9,13 @@
     svgStore,
   } from './stores';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
+  import VirtualList from '@sveltejs/svelte-virtual-list';
+  import FillDisplay from './FillDisplay.svelte';
 
   export let style;
   export let updateBackgroundRect;
+
+  let backgroundRect;
 
   let chartHeight = $svgStore?.fills?.chartHeight;
   let xScale = $svgStore?.fills?.xScale;
@@ -57,6 +61,7 @@
         xScale
       );
       const { color, strokeColor, strokeWidth } = layerColor;
+      // TODO Do we need this anymore?
       gradients = gradients.concat(layerGradients);
 
       return {
@@ -64,6 +69,7 @@
         fill: color,
         stroke: strokeColor,
         strokeWidth: strokeWidth,
+        gradients: layerGradients,
       };
     };
 
@@ -80,15 +86,14 @@
         stroke: d.stroke,
         strokeWidth: d.strokeWidth,
         layer: d,
+        gradients: d.gradients,
       };
     });
 
-    const backgroundRect = rects.find(rect => rect.layer.type === 'background');
+    backgroundRect = rects.find(rect => rect.layer.type === 'background');
     if (backgroundRect) {
-      const backgroundGradient = gradients.find(
-        g => g.id === backgroundRect.layer.id
-      );
-      updateBackgroundRect(backgroundRect, backgroundGradient);
+      updateBackgroundRect(backgroundRect, backgroundRect.gradients[0]);
+      rects = rects.filter(rect => rect.layer.type !== 'background');
     }
 
     svgStore.update(value => ({
@@ -103,8 +108,10 @@
     }
   }
 
+  let time = Date.now();
   onMount(() => {
     document.addEventListener('scroll', () => (scrollY = window.scrollY));
+    console.log({ MOUNTED: Date.now() - time });
   });
 
   function handleClick(layer) {
@@ -122,41 +129,35 @@
       top: yScale(expandedLayerId) + yScale.bandwidth() * 0.75,
     };
   }
+
+  let start;
+  let end;
 </script>
 
 <div class="fills-chart">
-  <svg id="fill" width={CHART_WIDTH} height={chartHeight}>
-    <defs>
-      {#each gradients as gradient}
-        <linearGradient id={gradient.id}>
-          {#each gradient.stops as stop}
-            <stop
-              offset={stop.offset}
-              stop-color={stop.stopColor}
-              stop-opacity={stop.stopOpacity}
-            />
-          {/each}
-        </linearGradient>
-      {/each}
-    </defs>
-    <g>
-      {#each rects as rect}
-        <rect
-          x={rect.x}
-          y={rect.y}
-          width={rect.width}
-          height={rect.layer.type === 'background'
-            ? chartHeight - MARGIN.top - MARGIN.bottom
-            : rect.height}
-          fill={rect.fill}
-          stroke={rect.stroke}
-          strokeWidth={rect.strokeWidth}
-          rx="20"
-          on:click={() => handleClick(rect.layer)}
-        />
-      {/each}
-    </g>
-
+  {#if backgroundRect}
+    <div class="background-item">
+      <FillDisplay
+        item={backgroundRect}
+        height={chartHeight}
+        {handleTooltipClose}
+        {handleTooltipWarning}
+        {handleClick}
+      />
+    </div>
+  {/if}
+  <VirtualList items={rects} bind:start bind:end let:item>
+    <div class="list-item">
+      <FillDisplay
+        {item}
+        height={item.height}
+        {handleTooltipClose}
+        {handleTooltipWarning}
+        {handleClick}
+      />
+    </div>
+  </VirtualList>
+  <!-- <svg>
     <g transform="translate(0, {MARGIN.top + scrollY})" class="x-axis">
       {#each zoomLevels as zoomLevel}
         <g
@@ -170,41 +171,7 @@
         </g>
       {/each}
     </g>
-
-    <g transform="translate(0, 0)" class="y-axis">
-      {#each rects as rect}
-        <g
-          class="tick"
-          opacity="1"
-          transform="translate(0,
-          {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
-        >
-          {#each rect.layer.id.split('/') as idSection, i}<g>
-              {#if i === 0 && limitHit.includes(idSection)}
-                <circle
-                  cx="6"
-                  cy="-6"
-                  r="6"
-                  fill="red"
-                  on:mouseover={() =>
-                    handleTooltipWarning(idSection, rect.layer.id)}
-                  on:mouseout={handleTooltipClose}
-                />
-              {/if}
-              <text
-                y={18 * i}
-                x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
-              >
-                {#if i > 0}↳{/if}
-
-                {idSection}</text
-              ></g
-            >
-          {/each}
-        </g>
-      {/each}
-    </g>
-  </svg>
+  </svg> -->
 
   {#if Object.keys(tooltip).length > 0}
     <Tooltip
@@ -218,6 +185,21 @@
 </div>
 
 <style>
+  .fills-chart {
+    flex-grow: 1;
+    width: 100vw;
+  }
+
+  .list-item {
+    margin-top: 24px;
+    background-color: transparent;
+  }
+
+  .background-item {
+    position: fixed;
+    z-index: -1000;
+  }
+
   .x-axis text {
     font-size: 0.9em;
     text-anchor: middle;

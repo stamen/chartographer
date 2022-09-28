@@ -162,7 +162,9 @@
       <Tabs on:tabchange={handleTabChange} {selectedTab} />
       {#if selectedTab !== 'typography'}
         <button on:click={downloadSvg} class="download-button"
-          >Download SVG <div class="icon"><Fa icon={faDownload} /></div></button
+          >Download SVG <div class="icon">
+            <Fa icon={faDownload} />
+          </div></button
         >
       {/if}
     </div>
@@ -172,6 +174,7 @@
       {updateBackgroundRect}
       {backgroundSvgData}
     />
+
     <button class="clear-style-button" on:click={clearStyle}
       >Clear style <div class="icon"><Fa icon={faTrash} /></div></button
     >
@@ -191,6 +194,7 @@
   main {
     width: 100%;
     height: 100%;
+    position: absolute;
   }
 
   button {
@@ -237,6 +241,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    z-index: 1;
   }
 
   .loading-screen {

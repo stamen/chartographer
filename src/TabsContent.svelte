@@ -2,6 +2,7 @@
   import FillsChart from './FillsChart.svelte';
   import LinesChart from './LinesChart.svelte';
   import TypographyChart from './TypographyChart.svelte';
+  import { MARGIN } from './constants';
 
   export let selectedTab;
   export let style;
@@ -21,8 +22,10 @@
 
 <style>
   .tabs-content {
+    margin-top: var(--margin-top);
     display: flex;
-    margin-top: 2.5em;
     padding: var(--app-padding);
+    height: calc(100% - var(--app-padding) * 2 - var(--margin-top));
+    width: calc(100% - var(--app-padding) * 2);
   }
 </style>
