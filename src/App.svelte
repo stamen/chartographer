@@ -129,6 +129,7 @@
     });
 
     svg = new XMLSerializer().serializeToString(svg);
+
     const blob = new Blob([svg]);
     const element = document.createElement('a');
     element.download = `${style.id}-${selectedTab}-chart.svg`;
