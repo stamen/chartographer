@@ -1,11 +1,11 @@
 <script>
-  import { displayLayersStore, propertyValueComboLimitStore } from './stores';
+  import { displayLayersStore } from './stores';
   import { CHART_WIDTH } from './constants';
-  import Tooltip from './Tooltip.svelte';
 
   export let item;
   export let height;
   export let handleTooltipClose;
+  export let handleTooltipWarning;
   export let handleClick;
 
   let limitHit = $displayLayersStore?.limitHit ?? [];
