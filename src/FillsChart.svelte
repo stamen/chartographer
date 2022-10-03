@@ -103,8 +103,10 @@
     }
   }
 
+  let time = Date.now();
   onMount(() => {
     document.addEventListener('scroll', () => (scrollY = window.scrollY));
+    console.log({ MOUNT: Date.now() - time });
   });
 
   function handleClick(layer) {
@@ -154,30 +156,11 @@
           rx="20"
           on:click={() => handleClick(rect.layer)}
         />
-      {/each}
-    </g>
-
-    <g transform="translate(0, {MARGIN.top + scrollY})" class="x-axis">
-      {#each zoomLevels as zoomLevel}
         <g
-          class="tick"
-          opacity="1"
-          transform="translate({xScale(zoomLevel)}, 0)"
-        >
-          <text y="9">
-            {zoomLevel}
-          </text>
-        </g>
-      {/each}
-    </g>
-
-    <g transform="translate(0, 0)" class="y-axis">
-      {#each rects as rect}
-        <g
-          class="tick"
+          class="y-axis tick"
           opacity="1"
           transform="translate(0,
-          {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
+        {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
         >
           {#each rect.layer.id.split('/') as idSection, i}<g>
               {#if i === 0 && limitHit.includes(idSection)}
@@ -201,6 +184,20 @@
               ></g
             >
           {/each}
+        </g>
+      {/each}
+    </g>
+
+    <g transform="translate(0, {MARGIN.top + scrollY})" class="x-axis">
+      {#each zoomLevels as zoomLevel}
+        <g
+          class="tick"
+          opacity="1"
+          transform="translate({xScale(zoomLevel)}, 0)"
+        >
+          <text y="9">
+            {zoomLevel}
+          </text>
         </g>
       {/each}
     </g>
