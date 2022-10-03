@@ -9,6 +9,7 @@
     svgStore,
   } from './stores';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
+  import SlotWrapper from './SlotWrapper.svelte';
 
   export let style;
   export let updateBackgroundRect;
@@ -25,6 +26,11 @@
 
   let zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
   let scrollY = 0;
+
+  const CHUNK_SIZE = 100;
+  let displayChunks = rects.length ? rects.slice(0, CHUNK_SIZE) : [];
+
+  $: gradientChunks = displayChunks.map(c => c.gradients).flat(Infinity);
 
   $: tooltip = {};
 
@@ -64,6 +70,7 @@
         fill: color,
         stroke: strokeColor,
         strokeWidth: strokeWidth,
+        gradients: layerGradients,
       };
     };
 
@@ -80,6 +87,7 @@
         stroke: d.stroke,
         strokeWidth: d.strokeWidth,
         layer: d,
+        gradients: d.gradients,
       };
     });
 
@@ -95,6 +103,8 @@
       ...value,
       fills: { svgs: rects, gradients, chartHeight, yScale, xScale },
     }));
+
+    displayChunks = rects.slice(0, CHUNK_SIZE);
   };
 
   $: {
@@ -124,12 +134,23 @@
       top: yScale(expandedLayerId) + yScale.bandwidth() * 0.75,
     };
   }
+
+  const expandDisplayChunks = index => {
+    const hitChunkIndex = index !== 0 && index % (CHUNK_SIZE - 1) === 0;
+    const hitLayerLength = index === rects.length - 1;
+    if (hitChunkIndex || hitLayerLength) {
+      setTimeout(
+        () => (displayChunks = rects.slice(0, index + 1 + CHUNK_SIZE)),
+        250
+      );
+    }
+  };
 </script>
 
 <div class="fills-chart">
   <svg id="fill" width={CHART_WIDTH} height={chartHeight}>
     <defs>
-      {#each gradients as gradient}
+      {#each gradientChunks as gradient (gradient.id)}
         <linearGradient id={gradient.id}>
           {#each gradient.stops as stop}
             <stop
@@ -142,49 +163,51 @@
       {/each}
     </defs>
     <g>
-      {#each rects as rect}
-        <rect
-          x={rect.x}
-          y={rect.y}
-          width={rect.width}
-          height={rect.layer.type === 'background'
-            ? chartHeight - MARGIN.top - MARGIN.bottom
-            : rect.height}
-          fill={rect.fill}
-          stroke={rect.stroke}
-          strokeWidth={rect.strokeWidth}
-          rx="20"
-          on:click={() => handleClick(rect.layer)}
-        />
-        <g
-          class="y-axis tick"
-          opacity="1"
-          transform="translate(0,
+      {#each displayChunks as rect, index (rect.layer.id)}
+        <SlotWrapper {index} on:load={e => expandDisplayChunks(e.detail)}>
+          <rect
+            x={rect.x}
+            y={rect.y}
+            width={rect.width}
+            height={rect.layer.type === 'background'
+              ? chartHeight - MARGIN.top - MARGIN.bottom
+              : rect.height}
+            fill={rect.fill}
+            stroke={rect.stroke}
+            strokeWidth={rect.strokeWidth}
+            rx="20"
+            on:click={() => handleClick(rect.layer)}
+          />
+          <g
+            class="y-axis tick"
+            opacity="1"
+            transform="translate(0,
         {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
-        >
-          {#each rect.layer.id.split('/') as idSection, i}<g>
-              {#if i === 0 && limitHit.includes(idSection)}
-                <circle
-                  cx="6"
-                  cy="-6"
-                  r="6"
-                  fill="red"
-                  on:mouseover={() =>
-                    handleTooltipWarning(idSection, rect.layer.id)}
-                  on:mouseout={handleTooltipClose}
-                />
-              {/if}
-              <text
-                y={18 * i}
-                x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
-              >
-                {#if i > 0}↳{/if}
+          >
+            {#each rect.layer.id.split('/') as idSection, i}<g>
+                {#if i === 0 && limitHit.includes(idSection)}
+                  <circle
+                    cx="6"
+                    cy="-6"
+                    r="6"
+                    fill="red"
+                    on:mouseover={() =>
+                      handleTooltipWarning(idSection, rect.layer.id)}
+                    on:mouseout={handleTooltipClose}
+                  />
+                {/if}
+                <text
+                  y={18 * i}
+                  x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
+                >
+                  {#if i > 0}↳{/if}
 
-                {idSection}</text
-              ></g
-            >
-          {/each}
-        </g>
+                  {idSection}</text
+                ></g
+              >
+            {/each}
+          </g></SlotWrapper
+        >
       {/each}
     </g>
 
