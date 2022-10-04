@@ -25,7 +25,7 @@
   let chartHeight = $svgStore?.lines?.chartHeight;
   let xScale = $svgStore?.lines?.xScale;
   let yScale = $svgStore?.lines?.yScale;
-  let adjustedYScale = $svgStore?.lines?.yScale;
+  let adjustedYScale = $svgStore?.lines?.adjustedYScale;
 
   let gradients = $svgStore?.lines?.gradients ?? [];
   let svgLayers = $svgStore?.lines?.svgs ?? [];
@@ -250,7 +250,7 @@
       lines: {
         svgs: svgLayers,
         gradients,
-        backgroundRect,
+        background: backgroundRect,
         chartHeight,
         yScale,
         adjustedYScale,
