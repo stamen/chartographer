@@ -88,6 +88,7 @@
   function handleTabChange(e) {
     selectedTab = e.detail.tab;
     updateQuery();
+    window.scrollTo(0, 0);
   }
 
   function handleDragOver(e) {
