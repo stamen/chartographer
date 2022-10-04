@@ -9,7 +9,13 @@
     svgStore,
     loadingStore,
   } from './stores';
-  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
+  import {
+    MIN_ZOOM,
+    MAX_ZOOM,
+    CHART_WIDTH,
+    MARGIN,
+    DISPLAY_CHUNK_SIZE,
+  } from './constants';
   import SlotWrapper from './SlotWrapper.svelte';
 
   export let style;
@@ -29,8 +35,7 @@
   let scrollY = 0;
 
   // Render in chunks of 100 to prevent blocking render
-  const CHUNK_SIZE = 100;
-  let displayChunks = rects.length ? rects.slice(0, CHUNK_SIZE) : [];
+  let displayChunks = rects.length ? rects.slice(0, DISPLAY_CHUNK_SIZE) : [];
   $: gradientChunks = displayChunks.map(c => c.gradients).flat(Infinity);
 
   $: tooltip = {};
@@ -105,7 +110,7 @@
       fills: { svgs: rects, gradients, chartHeight, yScale, xScale },
     }));
 
-    displayChunks = rects.slice(0, CHUNK_SIZE);
+    displayChunks = rects.slice(0, DISPLAY_CHUNK_SIZE);
   };
 
   $: {
@@ -135,11 +140,11 @@
   }
 
   const expandDisplayChunks = index => {
-    const hitChunkIndex = index !== 0 && index % (CHUNK_SIZE - 1) === 0;
+    const hitChunkIndex = index !== 0 && index % (DISPLAY_CHUNK_SIZE - 1) === 0;
     const hitLayerLength = index === rects.length - 1;
     if (hitChunkIndex || hitLayerLength) {
       setTimeout(
-        () => (displayChunks = rects.slice(0, index + 1 + CHUNK_SIZE)),
+        () => (displayChunks = rects.slice(0, index + 1 + DISPLAY_CHUNK_SIZE)),
         250
       );
     }

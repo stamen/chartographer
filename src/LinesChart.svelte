@@ -8,8 +8,16 @@
     displayLayersStore,
     propertyValueComboLimitStore,
     svgStore,
+    loadingStore,
   } from './stores';
-  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
+  import {
+    MIN_ZOOM,
+    MAX_ZOOM,
+    CHART_WIDTH,
+    MARGIN,
+    DISPLAY_CHUNK_SIZE,
+  } from './constants';
+  import SlotWrapper from './SlotWrapper.svelte';
 
   export let style;
   export let backgroundSvgData;
@@ -28,6 +36,12 @@
 
   let zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
   let scrollY = 0;
+
+  // Render in chunks of 100 to prevent blocking render
+  let displayChunks = svgLayers.length
+    ? svgLayers.slice(0, DISPLAY_CHUNK_SIZE)
+    : [];
+  $: gradientChunks = displayChunks.map(c => c.gradients).flat(Infinity);
 
   $: tooltip = {};
 
@@ -178,6 +192,7 @@
       fill: color,
       stroke: strokeColor,
       strokeWidth: strokeWidth,
+      gradients: layerGradients,
     };
   };
 
@@ -242,6 +257,8 @@
         xScale,
       },
     }));
+
+    displayChunks = svgLayers.slice(0, DISPLAY_CHUNK_SIZE);
   };
 
   $: if (expandedLayers && !svgLayers.length) {
@@ -267,12 +284,36 @@
       top: adjustedYScale(expandedLayerId) + yScale.bandwidth() * 0.75,
     };
   }
+
+  const expandDisplayChunks = index => {
+    const hitChunkIndex = index !== 0 && index % (DISPLAY_CHUNK_SIZE - 1) === 0;
+    const hitLayerLength = index === svgLayers.length - 1;
+    if (hitChunkIndex || hitLayerLength) {
+      setTimeout(
+        () =>
+          (displayChunks = svgLayers.slice(0, index + 1 + DISPLAY_CHUNK_SIZE)),
+        250
+      );
+    }
+  };
+
+  const setNonBlockingLoader = (displayLen, actualLen) => {
+    const isLoading = displayLen < actualLen;
+    if (isLoading === $loadingStore.loading) return;
+    if (isLoading) {
+      loadingStore.set({ loading: true, progress: null });
+    } else {
+      loadingStore.set({ loading: false, progress: null });
+    }
+  };
+
+  $: setNonBlockingLoader(displayChunks.length, svgLayers.length);
 </script>
 
 <div class="fills-chart">
   <svg id="lines" width={CHART_WIDTH} height={chartHeight}>
     <defs>
-      {#each gradients as gradient}
+      {#each gradientChunks as gradient (gradient.id)}
         <linearGradient id={gradient.id}>
           {#each gradient.stops as stop}
             <stop
@@ -297,14 +338,42 @@
           rx="20"
         />
       {/if}
-      {#each svgLayers as layer}
-        <path
-          d={layer.path}
-          fill={layer.fill}
-          stroke={layer.stroke}
-          strokeWidth={layer.strokeWidth}
-          on:click={() => handleClick(layer)}
-        />
+      {#each displayChunks as layer, index (layer.id)}
+        <SlotWrapper {index} on:load={e => expandDisplayChunks(e.detail)}>
+          <path
+            d={layer.path}
+            fill={layer.fill}
+            stroke={layer.stroke}
+            strokeWidth={layer.strokeWidth}
+            on:click={() => handleClick(layer)}
+          />
+          <g
+            class="y-axis tick"
+            opacity="1"
+            transform="translate(0,
+          {adjustedYScale(layer.id) + yScale.bandwidth() / 2})"
+          >
+            {#each layer.id.split('/') as idSection, i}<g>
+                {#if i === 0 && limitHit.includes(idSection)}
+                  <circle
+                    cx="6"
+                    cy="-6"
+                    r="6"
+                    fill="red"
+                    on:mouseover={() =>
+                      handleTooltipWarning(idSection, layer.id)}
+                    on:mouseout={handleTooltipClose}
+                  />
+                {/if}
+                <text
+                  y={18 * i}
+                  x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
+                  >{#if i > 0}↳{/if}{idSection}</text
+                >
+              </g>
+            {/each}
+          </g>
+        </SlotWrapper>
       {/each}
     </g>
 
@@ -318,36 +387,6 @@
           <text y="9">
             {zoomLevel}
           </text>
-        </g>
-      {/each}
-    </g>
-
-    <g transform="translate(0, 0)" class="y-axis">
-      {#each svgLayers as layer}
-        <g
-          class="tick"
-          opacity="1"
-          transform="translate(0,
-          {adjustedYScale(layer.id) + yScale.bandwidth() / 2})"
-        >
-          {#each layer.id.split('/') as idSection, i}<g>
-              {#if i === 0 && limitHit.includes(idSection)}
-                <circle
-                  cx="6"
-                  cy="-6"
-                  r="6"
-                  fill="red"
-                  on:mouseover={() => handleTooltipWarning(idSection, layer.id)}
-                  on:mouseout={handleTooltipClose}
-                />
-              {/if}
-              <text
-                y={18 * i}
-                x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
-                >{#if i > 0}↳{/if}{idSection}</text
-              >
-            </g>
-          {/each}
         </g>
       {/each}
     </g>

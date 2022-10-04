@@ -7,3 +7,4 @@ export let MARGIN = {
   right: 50,
   top: 25,
 };
+export const DISPLAY_CHUNK_SIZE = 100;
