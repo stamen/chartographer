@@ -20,16 +20,16 @@
   import SlotWrapper from './SlotWrapper.svelte';
 
   export let style;
-  export let backgroundSvgData;
 
   let chartHeight = $svgStore?.lines?.chartHeight;
-  let xScale = $svgStore?.lines?.xScale;
   let yScale = $svgStore?.lines?.yScale;
   let adjustedYScale = $svgStore?.lines?.adjustedYScale;
 
   let gradients = $svgStore?.lines?.gradients ?? [];
   let svgLayers = $svgStore?.lines?.svgs ?? [];
-  let backgroundRect = $svgStore?.lines?.background;
+  // TODO we should pull the background rectangle without relying on the fills chart
+  let backgroundRect =
+    $svgStore?.lines?.background ?? $svgStore?.fills?.background;
 
   let expandedLayers = $displayLayersStore?.layers ?? [];
   let limitHit = $displayLayersStore?.limitHit ?? [];
@@ -37,11 +37,20 @@
   let zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
   let scrollY = 0;
 
+  let xScale = d3.scaleLinear(
+    [MIN_ZOOM, MAX_ZOOM],
+    [MARGIN.left, CHART_WIDTH - MARGIN.right]
+  );
+
   // Render in chunks of 100 to prevent blocking render
   let displayChunks = svgLayers.length
     ? svgLayers.slice(0, DISPLAY_CHUNK_SIZE)
     : [];
-  $: gradientChunks = displayChunks.map(c => c.gradients).flat(Infinity);
+  $: gradientChunks = displayChunks
+    .concat([backgroundRect])
+    .filter(Boolean)
+    .map(c => c.gradients)
+    .flat(Infinity);
 
   $: tooltip = {};
 
@@ -201,10 +210,6 @@
 
     chartHeight = lineLayers.length * 65;
 
-    xScale = d3.scaleLinear(
-      [MIN_ZOOM, MAX_ZOOM],
-      [MARGIN.left, CHART_WIDTH - MARGIN.right]
-    );
     yScale = d3
       .scaleBand(
         lineLayers.map(({ id }) => id),
@@ -240,9 +245,9 @@
 
     svgLayers = lineLayers.map(getDrawLayer);
 
-    backgroundRect = backgroundSvgData.rect;
-    if (backgroundSvgData.gradientDefs) {
-      gradients.push(backgroundSvgData.gradientDefs);
+    backgroundRect = $svgStore?.fills?.background;
+    if (backgroundRect?.gradients?.length) {
+      gradients = gradients.concat(backgroundRect.gradients);
     }
 
     svgStore.update(value => ({
@@ -254,7 +259,6 @@
         chartHeight,
         yScale,
         adjustedYScale,
-        xScale,
       },
     }));
 

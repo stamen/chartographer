@@ -13,10 +13,10 @@ export const displayLayersStore = writable(displayLayersStoreInitialState);
 
 export const svgStoreInitialState = {
   fills: {
+    background: null,
     svgs: [],
     gradients: [],
     chartHeight: null,
-    xScale: null,
     yScale: null,
   },
   lines: {
@@ -24,7 +24,6 @@ export const svgStoreInitialState = {
     svgs: [],
     gradients: [],
     chartHeight: null,
-    xScale: null,
     yScale: null,
     adjustedYScale: null,
   },

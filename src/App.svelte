@@ -22,7 +22,6 @@
 
   export let selectedTab;
   export let style;
-  export let backgroundSvgData = {};
   export let loadDefaultStyle = false;
 
   let isLoading;
@@ -114,13 +113,6 @@
     style = undefined;
   }
 
-  function updateBackgroundRect(backgroundRect, backgroundGradient) {
-    backgroundSvgData = {
-      gradientDefs: backgroundGradient,
-      rect: backgroundRect,
-    };
-  }
-
   function downloadSvg() {
     let svg = document.getElementById(selectedTab);
 
@@ -171,12 +163,7 @@
         >
       {/if}
     </div>
-    <TabsContent
-      {selectedTab}
-      {style}
-      {updateBackgroundRect}
-      {backgroundSvgData}
-    />
+    <TabsContent {selectedTab} {style} />
     <button class="clear-style-button" on:click={clearStyle}
       >Clear style <div class="icon"><Fa icon={faTrash} /></div></button
     >

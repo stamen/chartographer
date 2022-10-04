@@ -19,14 +19,13 @@
   import SlotWrapper from './SlotWrapper.svelte';
 
   export let style;
-  export let updateBackgroundRect;
 
   let chartHeight = $svgStore?.fills?.chartHeight;
-  let xScale = $svgStore?.fills?.xScale;
   let yScale = $svgStore?.fills?.yScale;
 
-  let rects = $svgStore?.fills?.svgs ?? [];
   let gradients = $svgStore?.fills?.gradients ?? [];
+  let svgLayers = $svgStore?.fills?.svgs ?? [];
+  let backgroundRect = $svgStore?.fills?.background;
 
   let expandedLayers = $displayLayersStore?.layers ?? [];
   let limitHit = $displayLayersStore?.limitHit ?? [];
@@ -34,8 +33,15 @@
   let zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
   let scrollY = 0;
 
+  let xScale = d3.scaleLinear(
+    [MIN_ZOOM, MAX_ZOOM],
+    [MARGIN.left, CHART_WIDTH - MARGIN.right]
+  );
+
   // Render in chunks of 100 to prevent blocking render
-  let displayChunks = rects.length ? rects.slice(0, DISPLAY_CHUNK_SIZE) : [];
+  let displayChunks = svgLayers.length
+    ? svgLayers.slice(0, DISPLAY_CHUNK_SIZE)
+    : [];
   $: gradientChunks = displayChunks.map(c => c.gradients).flat(Infinity);
 
   $: tooltip = {};
@@ -52,10 +58,6 @@
 
     chartHeight = layers.length * 65;
 
-    xScale = d3.scaleLinear(
-      [MIN_ZOOM, MAX_ZOOM],
-      [MARGIN.left, CHART_WIDTH - MARGIN.right]
-    );
     yScale = d3
       .scaleBand(
         layers.map(({ id }) => id),
@@ -83,7 +85,7 @@
     layers = layers.map(getDrawLayer);
 
     // TODO consider combining casing with roads
-    rects = layers.map(d => {
+    svgLayers = layers.map(d => {
       return {
         x: xScale(d.minzoom || MIN_ZOOM),
         y: yScale(d.id),
@@ -97,24 +99,24 @@
       };
     });
 
-    const backgroundRect = rects.find(rect => rect.layer.type === 'background');
-    if (backgroundRect) {
-      const backgroundGradient = gradients.find(
-        g => g.id === backgroundRect.layer.id
-      );
-      updateBackgroundRect(backgroundRect, backgroundGradient);
-    }
+    backgroundRect = svgLayers.find(rect => rect.layer.type === 'background');
 
     svgStore.update(value => ({
       ...value,
-      fills: { svgs: rects, gradients, chartHeight, yScale, xScale },
+      fills: {
+        background: backgroundRect,
+        svgs: svgLayers,
+        gradients,
+        chartHeight,
+        yScale,
+      },
     }));
 
-    displayChunks = rects.slice(0, DISPLAY_CHUNK_SIZE);
+    displayChunks = svgLayers.slice(0, DISPLAY_CHUNK_SIZE);
   };
 
   $: {
-    if (expandedLayers && !rects.length) {
+    if (expandedLayers && !svgLayers.length) {
       initChart();
     }
   }
@@ -141,10 +143,11 @@
 
   const expandDisplayChunks = index => {
     const hitChunkIndex = index !== 0 && index % (DISPLAY_CHUNK_SIZE - 1) === 0;
-    const hitLayerLength = index === rects.length - 1;
+    const hitLayerLength = index === svgLayers.length - 1;
     if (hitChunkIndex || hitLayerLength) {
       setTimeout(
-        () => (displayChunks = rects.slice(0, index + 1 + DISPLAY_CHUNK_SIZE)),
+        () =>
+          (displayChunks = svgLayers.slice(0, index + 1 + DISPLAY_CHUNK_SIZE)),
         250
       );
     }
@@ -160,7 +163,7 @@
     }
   };
 
-  $: setNonBlockingLoader(displayChunks.length, rects.length);
+  $: setNonBlockingLoader(displayChunks.length, svgLayers.length);
 </script>
 
 <div class="fills-chart">
@@ -179,15 +182,25 @@
       {/each}
     </defs>
     <g>
+      {#if backgroundRect}
+        <rect
+          x={backgroundRect.x}
+          y={backgroundRect.y}
+          width={backgroundRect.width}
+          height={chartHeight - MARGIN.top - MARGIN.bottom}
+          fill={backgroundRect.fill}
+          stroke={backgroundRect.stroke}
+          strokeWidth={backgroundRect.strokeWidth}
+          rx="20"
+        />
+      {/if}
       {#each displayChunks as rect, index (rect.layer.id)}
         <SlotWrapper {index} on:load={e => expandDisplayChunks(e.detail)}>
           <rect
             x={rect.x}
             y={rect.y}
             width={rect.width}
-            height={rect.layer.type === 'background'
-              ? chartHeight - MARGIN.top - MARGIN.bottom
-              : rect.height}
+            height={rect.height}
             fill={rect.fill}
             stroke={rect.stroke}
             strokeWidth={rect.strokeWidth}
