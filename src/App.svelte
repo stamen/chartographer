@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
+  import { Circle } from 'svelte-loading-spinners';
   import { readQuery, writeQuery } from './query';
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
@@ -161,7 +162,10 @@
     <div class="top-bar">
       <Tabs on:tabchange={handleTabChange} {selectedTab} />
       {#if selectedTab !== 'typography'}
-        <button on:click={downloadSvg} class="download-button"
+        <button
+          on:click={downloadSvg}
+          class="download-button"
+          disabled={isLoading}
           >Download SVG <div class="icon"><Fa icon={faDownload} /></div></button
         >
       {/if}
@@ -181,9 +185,13 @@
     </div>
   {/if}
   {#if isLoading}
-    <div class="loading-screen">
-      <ProgressBar progress={loadingProgress} />
-    </div>
+    {#if loadingProgress !== null}
+      <div class="loading-screen">
+        <ProgressBar progress={loadingProgress} />
+      </div>
+    {:else}
+      <div class="mini-loader"><Circle size={36} color="#FFFFFF" /></div>
+    {/if}
   {/if}
 </main>
 
@@ -247,5 +255,12 @@
     bottom: 0;
     right: 0;
     left: 0;
+  }
+
+  .mini-loader {
+    position: fixed;
+    top: calc(36px + (var(--app-padding) * 2));
+    right: 0px;
+    margin: 36px;
   }
 </style>

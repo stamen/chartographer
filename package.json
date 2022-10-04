@@ -35,7 +35,8 @@
     "rollup-plugin-terser": "^7.0.0",
     "rollup-plugin-web-worker-loader": "^1.6.1",
     "svelte": "^3.0.0",
-    "svelte-jester": "^2.3.2"
+    "svelte-jester": "^2.3.2",
+    "svelte-loading-spinners": "^0.1.7"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.0.0",

@@ -7,6 +7,7 @@
     displayLayersStore,
     propertyValueComboLimitStore,
     svgStore,
+    loadingStore,
   } from './stores';
   import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
   import SlotWrapper from './SlotWrapper.svelte';
@@ -27,9 +28,9 @@
   let zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
   let scrollY = 0;
 
+  // Render in chunks of 100 to prevent blocking render
   const CHUNK_SIZE = 100;
   let displayChunks = rects.length ? rects.slice(0, CHUNK_SIZE) : [];
-
   $: gradientChunks = displayChunks.map(c => c.gradients).flat(Infinity);
 
   $: tooltip = {};
@@ -113,10 +114,8 @@
     }
   }
 
-  let time = Date.now();
   onMount(() => {
     document.addEventListener('scroll', () => (scrollY = window.scrollY));
-    console.log({ MOUNT: Date.now() - time });
   });
 
   function handleClick(layer) {
@@ -145,6 +144,18 @@
       );
     }
   };
+
+  const setNonBlockingLoader = (displayLen, actualLen) => {
+    const isLoading = displayLen < actualLen;
+    if (isLoading === $loadingStore.loading) return;
+    if (isLoading) {
+      loadingStore.set({ loading: true, progress: null });
+    } else {
+      loadingStore.set({ loading: false, progress: null });
+    }
+  };
+
+  $: setNonBlockingLoader(displayChunks.length, rects.length);
 </script>
 
 <div class="fills-chart">
