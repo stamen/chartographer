@@ -59,6 +59,7 @@ button {
 
 button:disabled {
   color: #999;
+  pointer-events: none;
 }
 
 button:not(:disabled):active {
