@@ -9,6 +9,7 @@
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
   import ProgressBar from './ProgressBar.svelte';
+  import CustomUrlInput from './CustomUrlInput.svelte';
   import computedStyleToInlineStyle from 'computed-style-to-inline-style';
   import { convertStylesheetToRgb } from './convert-colors';
   import {
@@ -19,6 +20,7 @@
     svgStoreInitialState,
   } from './stores';
   import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
+  import { stylesEqual } from './styles/styles-equal';
 
   export let selectedTab;
   export let style;
@@ -80,10 +82,6 @@
     style = await d3.json(url);
   }
 
-  function handleStyleLoad(e) {
-    style = e.detail.style;
-  }
-
   function handleTabChange(e) {
     selectedTab = e.detail.tab;
     updateQuery();
@@ -98,15 +96,19 @@
     e.preventDefault();
   }
 
+  function setStyle(nextStyle) {
+    style = migrate(nextStyle);
+    style = convertStylesheetToRgb(style);
+    // On dropping in a style, switch to the fill tab to refresh background layer state
+    handleTabChange({ detail: { tab: 'fill' } });
+  }
+
   async function handleDrop(e) {
     e.stopPropagation();
     e.preventDefault();
     const { files } = e.dataTransfer;
     const text = await files[0].text();
-    style = migrate(JSON.parse(text));
-    style = convertStylesheetToRgb(style);
-    // On dropping in a style, switch to the fill tab to refresh background layer state
-    handleTabChange({ detail: { tab: 'fill' } });
+    setStyle(JSON.parse(text));
   }
 
   function clearStyle() {
@@ -144,6 +146,12 @@
     loadingStore.update(v => ({ ...v, progress: 1 }));
     setTimeout(() => loadingStore.set({ loading: false, progress: null }), 250);
   }
+
+  const handleCustomUrl = e => {
+    let { style: nextStyle } = e.detail;
+    if (stylesEqual(style, nextStyle)) return;
+    setStyle(nextStyle);
+  };
 </script>
 
 <main
@@ -151,8 +159,8 @@
   on:dragover={handleDragEnter}
   on:drop={handleDrop}
 >
-  {#if expandedLayers.length}
-    <div class="top-bar">
+  <div class="top-bar">
+    {#if expandedLayers.length}
       <Tabs on:tabchange={handleTabChange} {selectedTab} />
       {#if selectedTab !== 'typography'}
         <button
@@ -162,7 +170,18 @@
           >Download SVG <div class="icon"><Fa icon={faDownload} /></div></button
         >
       {/if}
+    {:else}
+      <div />
+    {/if}
+    <div class="custom-url-input">
+      <CustomUrlInput
+        on:styleload={handleCustomUrl}
+        activeStyle={style}
+        disabled={isLoading && loadingProgress !== null}
+      />
     </div>
+  </div>
+  {#if expandedLayers.length}
     <TabsContent {selectedTab} {style} />
     <button class="clear-style-button" on:click={clearStyle}
       >Clear style <div class="icon"><Fa icon={faTrash} /></div></button
@@ -197,6 +216,10 @@
     font-weight: bold;
   }
 
+  .custom-url-input {
+    position: relative;
+  }
+
   .drop {
     font-size: 5em;
     display: flex;
@@ -207,8 +230,12 @@
   }
 
   .download-button {
+    position: fixed;
+    /* Takes into account the top bar + additional 12px */
+    top: calc(36px + 12px + var(--app-padding) * 2);
+    right: 12px;
     display: flex;
-    align-self: center;
+    align-items: center;
   }
 
   .clear-style-button {
