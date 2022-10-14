@@ -3,16 +3,47 @@
   import { onMount } from 'svelte';
   import Tooltip from './Tooltip.svelte';
   import { getColor } from './get-color';
-  import { displayLayersStore, propertyValueComboLimitStore } from './stores';
-  import { MIN_ZOOM, MAX_ZOOM, CHART_WIDTH, MARGIN } from './constants';
+  import {
+    displayLayersStore,
+    propertyValueComboLimitStore,
+    svgStore,
+    loadingStore,
+  } from './stores';
+  import {
+    MIN_ZOOM,
+    MAX_ZOOM,
+    CHART_WIDTH,
+    MARGIN,
+    DISPLAY_CHUNK_SIZE,
+  } from './constants';
+  import SlotWrapper from './SlotWrapper.svelte';
 
   export let style;
-  export let updateBackgroundRect;
 
-  let chartHeight;
+  let chartHeight = $svgStore?.fills?.chartHeight;
+  let yScale = $svgStore?.fills?.yScale;
 
-  let rects = [];
-  let gradients = [];
+  let gradients = $svgStore?.fills?.gradients ?? [];
+  let svgLayers = $svgStore?.fills?.svgs ?? [];
+  let backgroundRect = $svgStore?.fills?.background;
+
+  let expandedLayers = $displayLayersStore?.layers ?? [];
+  let limitHit = $displayLayersStore?.limitHit ?? [];
+
+  let zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
+  let scrollY = 0;
+
+  let xScale = d3.scaleLinear(
+    [MIN_ZOOM, MAX_ZOOM],
+    [MARGIN.left, CHART_WIDTH - MARGIN.right]
+  );
+
+  // Render in chunks of 100 to prevent blocking render
+  let displayChunks = svgLayers.length
+    ? svgLayers.slice(0, DISPLAY_CHUNK_SIZE)
+    : [];
+  $: gradientChunks = displayChunks.map(c => c.gradients).flat(Infinity);
+
   $: tooltip = {};
 
   const handleTooltipClose = () => (tooltip = {});
@@ -22,37 +53,17 @@
     handleTooltipClose();
   }
 
-  let xScale;
-  let yScale;
-
-  let scrollY = 0;
-
-  let zoomLevels = [];
-
-  let expandedLayers = [];
-  let limitHit = [];
-  displayLayersStore.subscribe(value => {
-    expandedLayers = value.layers;
-    limitHit = value.limitHit;
-  });
-
   const initChart = () => {
     let layers = expandedLayers;
 
     chartHeight = layers.length * 65;
 
-    xScale = d3.scaleLinear(
-      [MIN_ZOOM, MAX_ZOOM],
-      [MARGIN.left, CHART_WIDTH - MARGIN.right]
-    );
     yScale = d3
       .scaleBand(
         layers.map(({ id }) => id),
         [MARGIN.top, chartHeight - MARGIN.bottom]
       )
       .padding(0.25);
-
-    zoomLevels = d3.range(MIN_ZOOM, MAX_ZOOM + 1, 1);
 
     const getDrawLayer = layer => {
       const { color: layerColor, gradients: layerGradients } = getColor(
@@ -67,13 +78,14 @@
         fill: color,
         stroke: strokeColor,
         strokeWidth: strokeWidth,
+        gradients: layerGradients,
       };
     };
 
     layers = layers.map(getDrawLayer);
 
     // TODO consider combining casing with roads
-    rects = layers.map(d => {
+    svgLayers = layers.map(d => {
       return {
         x: xScale(d.minzoom || MIN_ZOOM),
         y: yScale(d.id),
@@ -83,20 +95,30 @@
         stroke: d.stroke,
         strokeWidth: d.strokeWidth,
         layer: d,
+        gradients: d.gradients,
       };
     });
 
-    const backgroundRect = rects.find(rect => rect.layer.type === 'background');
-    if (backgroundRect) {
-      const backgroundGradient = gradients.find(
-        g => g.id === backgroundRect.layer.id
-      );
-      updateBackgroundRect(backgroundRect, backgroundGradient);
-    }
+    backgroundRect = svgLayers.find(rect => rect.layer.type === 'background');
+
+    svgStore.update(value => ({
+      ...value,
+      fills: {
+        background: backgroundRect,
+        svgs: svgLayers,
+        gradients,
+        chartHeight,
+        yScale,
+      },
+    }));
+
+    displayChunks = svgLayers.slice(0, DISPLAY_CHUNK_SIZE);
   };
 
-  $: if (expandedLayers) {
-    initChart();
+  $: {
+    if (expandedLayers && !svgLayers.length) {
+      initChart();
+    }
   }
 
   onMount(() => {
@@ -118,12 +140,36 @@
       top: yScale(expandedLayerId) + yScale.bandwidth() * 0.75,
     };
   }
+
+  const expandDisplayChunks = index => {
+    const hitChunkIndex = index !== 0 && index % (DISPLAY_CHUNK_SIZE - 1) === 0;
+    const hitLayerLength = index === svgLayers.length - 1;
+    if (hitChunkIndex || hitLayerLength) {
+      setTimeout(
+        () =>
+          (displayChunks = svgLayers.slice(0, index + 1 + DISPLAY_CHUNK_SIZE)),
+        250
+      );
+    }
+  };
+
+  const setNonBlockingLoader = (displayLen, actualLen) => {
+    const isLoading = displayLen < actualLen;
+    if (isLoading === $loadingStore.loading) return;
+    if (isLoading) {
+      loadingStore.set({ loading: true, progress: null });
+    } else {
+      loadingStore.set({ loading: false, progress: null });
+    }
+  };
+
+  $: setNonBlockingLoader(displayChunks.length, svgLayers.length);
 </script>
 
 <div class="fills-chart">
   <svg id="fill" width={CHART_WIDTH} height={chartHeight}>
     <defs>
-      {#each gradients as gradient}
+      {#each gradientChunks as gradient (gradient.id)}
         <linearGradient id={gradient.id}>
           {#each gradient.stops as stop}
             <stop
@@ -136,20 +182,61 @@
       {/each}
     </defs>
     <g>
-      {#each rects as rect}
+      {#if backgroundRect}
         <rect
-          x={rect.x}
-          y={rect.y}
-          width={rect.width}
-          height={rect.layer.type === 'background'
-            ? chartHeight - MARGIN.top - MARGIN.bottom
-            : rect.height}
-          fill={rect.fill}
-          stroke={rect.stroke}
-          strokeWidth={rect.strokeWidth}
+          x={backgroundRect.x}
+          y={backgroundRect.y}
+          width={backgroundRect.width}
+          height={chartHeight - MARGIN.top - MARGIN.bottom}
+          fill={backgroundRect.fill}
+          stroke={backgroundRect.stroke}
+          strokeWidth={backgroundRect.strokeWidth}
           rx="20"
-          on:click={() => handleClick(rect.layer)}
         />
+      {/if}
+      {#each displayChunks as rect, index (rect.layer.id)}
+        <SlotWrapper {index} on:load={e => expandDisplayChunks(e.detail)}>
+          <rect
+            x={rect.x}
+            y={rect.y}
+            width={rect.width}
+            height={rect.height}
+            fill={rect.fill}
+            stroke={rect.stroke}
+            strokeWidth={rect.strokeWidth}
+            rx="20"
+            on:click={() => handleClick(rect.layer)}
+          />
+          <g
+            class="y-axis tick"
+            opacity="1"
+            transform="translate(0,
+        {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
+          >
+            {#each rect.layer.id.split('/') as idSection, i}<g>
+                {#if i === 0 && limitHit.includes(idSection)}
+                  <circle
+                    cx="6"
+                    cy="-6"
+                    r="6"
+                    fill="red"
+                    on:mouseover={() =>
+                      handleTooltipWarning(idSection, rect.layer.id)}
+                    on:mouseout={handleTooltipClose}
+                  />
+                {/if}
+                <text
+                  y={18 * i}
+                  x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
+                >
+                  {#if i > 0}↳{/if}
+
+                  {idSection}</text
+                ></g
+              >
+            {/each}
+          </g></SlotWrapper
+        >
       {/each}
     </g>
 
@@ -163,40 +250,6 @@
           <text y="9">
             {zoomLevel}
           </text>
-        </g>
-      {/each}
-    </g>
-
-    <g transform="translate(0, 0)" class="y-axis">
-      {#each rects as rect}
-        <g
-          class="tick"
-          opacity="1"
-          transform="translate(0,
-          {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
-        >
-          {#each rect.layer.id.split('/') as idSection, i}<g>
-              {#if i === 0 && limitHit.includes(idSection)}
-                <circle
-                  cx="6"
-                  cy="-6"
-                  r="6"
-                  fill="red"
-                  on:mouseover={() =>
-                    handleTooltipWarning(idSection, rect.layer.id)}
-                  on:mouseout={handleTooltipClose}
-                />
-              {/if}
-              <text
-                y={18 * i}
-                x={(i > 0 ? 18 : 0) + limitHit.includes(idSection) ? 18 : 0}
-              >
-                {#if i > 0}↳{/if}
-
-                {idSection}</text
-              ></g
-            >
-          {/each}
         </g>
       {/each}
     </g>

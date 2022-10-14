@@ -11,9 +11,9 @@
 
 <div class="tabs-content">
   {#if selectedTab === 'fill'}
-    <FillsChart {style} {updateBackgroundRect} />
+    <FillsChart {style} />
   {:else if selectedTab === 'lines'}
-    <LinesChart {style} {backgroundSvgData} />
+    <LinesChart {style} />
   {:else if selectedTab === 'typography'}
     <TypographyChart {style} />
   {/if}

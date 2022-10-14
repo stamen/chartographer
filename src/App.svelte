@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
+  import { Circle } from 'svelte-loading-spinners';
   import { readQuery, writeQuery } from './query';
   import Tabs from './Tabs.svelte';
   import TabsContent from './TabsContent.svelte';
@@ -11,13 +12,18 @@
   import CustomUrlInput from './CustomUrlInput.svelte';
   import computedStyleToInlineStyle from 'computed-style-to-inline-style';
   import { convertStylesheetToRgb } from './convert-colors';
-  import { loadingStore, displayLayersStore } from './stores';
+  import {
+    loadingStore,
+    displayLayersStore,
+    displayLayersStoreInitialState,
+    svgStore,
+    svgStoreInitialState,
+  } from './stores';
   import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
   import { stylesEqual } from './styles/styles-equal';
 
   export let selectedTab;
   export let style;
-  export let backgroundSvgData = {};
   export let loadDefaultStyle = false;
 
   let isLoading;
@@ -79,6 +85,7 @@
   function handleTabChange(e) {
     selectedTab = e.detail.tab;
     updateQuery();
+    window.scrollTo(0, 0);
   }
 
   function handleDragOver(e) {
@@ -108,13 +115,6 @@
     style = undefined;
   }
 
-  function updateBackgroundRect(backgroundRect, backgroundGradient) {
-    backgroundSvgData = {
-      gradientDefs: backgroundGradient,
-      rect: backgroundRect,
-    };
-  }
-
   function downloadSvg() {
     let svg = document.getElementById(selectedTab);
 
@@ -134,11 +134,8 @@
   }
 
   $: if (style) {
-    displayLayersStore.set({
-      style: null,
-      layers: [],
-      limitHit: [],
-    });
+    displayLayersStore.set(displayLayersStoreInitialState);
+    svgStore.set(svgStoreInitialState);
     loadingStore.set({ loading: true, progress: 0 });
     setExpandedLayers(style);
   }
@@ -166,7 +163,10 @@
     {#if expandedLayers.length}
       <Tabs on:tabchange={handleTabChange} {selectedTab} />
       {#if selectedTab !== 'typography'}
-        <button on:click={downloadSvg} class="download-button"
+        <button
+          on:click={downloadSvg}
+          class="download-button"
+          disabled={isLoading}
           >Download SVG <div class="icon"><Fa icon={faDownload} /></div></button
         >
       {/if}
@@ -182,12 +182,7 @@
     </div>
   </div>
   {#if expandedLayers.length}
-    <TabsContent
-      {selectedTab}
-      {style}
-      {updateBackgroundRect}
-      {backgroundSvgData}
-    />
+    <TabsContent {selectedTab} {style} />
     <button class="clear-style-button" on:click={clearStyle}
       >Clear style <div class="icon"><Fa icon={faTrash} /></div></button
     >
@@ -197,9 +192,13 @@
     </div>
   {/if}
   {#if isLoading}
-    <div class="loading-screen">
-      <ProgressBar progress={loadingProgress} />
-    </div>
+    {#if loadingProgress !== null}
+      <div class="loading-screen">
+        <ProgressBar progress={loadingProgress} />
+      </div>
+    {:else}
+      <div class="mini-loader"><Circle size={36} color="#FFFFFF" /></div>
+    {/if}
   {/if}
 </main>
 
@@ -271,5 +270,12 @@
     bottom: 0;
     right: 0;
     left: 0;
+  }
+
+  .mini-loader {
+    position: fixed;
+    top: calc(36px + (var(--app-padding) * 2));
+    right: 0px;
+    margin: 36px;
   }
 </style>
