@@ -238,7 +238,7 @@
 
       const textMultiplier = 18;
       // Determine the previous label height by splitting the id up as it will be stacked and multiplying by text height
-      const numberOfLabelRows = layers?.[i - 1]?.id?.split('/')?.length;
+      const numberOfLabelRows = lineLayers?.[i - 1]?.id?.split('/')?.length;
       const prevLabelHeight = numberOfLabelRows
         ? (numberOfLabelRows - 1) * textMultiplier
         : 0;
