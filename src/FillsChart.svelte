@@ -76,17 +76,17 @@
 
     for (let i = 0; i < layers.length; i++) {
       const l = layers[i];
-      const multiplier = 18;
+      const textMultiplier = 18;
       let placement = yScaleObj[l.id];
       // Determine the previous label height by splitting the id up as it will be stacked and multiplying by text height
       const prevLabelHeight = layers[i - 1]
-        ? Math.max(0, layers[i - 1].id.split('/').length - 1) * multiplier
+        ? Math.max(0, layers[i - 1].id.split('/').length - 1) * textMultiplier
         : 0;
       yOffset += prevLabelHeight;
       const nextPlacement = placement + yOffset;
       yScaleObj[l.id] = nextPlacement;
       if (i === layers.length - 1) {
-        yOffset += l.id.split('/').length * multiplier;
+        yOffset += l.id.split('/').length * textMultiplier;
       }
     }
 
