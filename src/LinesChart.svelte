@@ -252,6 +252,8 @@
       const nextPlacement = placement + yOffset;
       yScaleObj[l.id] = nextPlacement;
 
+      // For the last layer, add additional space since there isn't
+      // a subsequent layer to add it from the previous
       if (i === lineLayers.length - 1) {
         yOffset += l.id.split('/').length * textMultiplier;
       }
