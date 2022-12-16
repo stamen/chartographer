@@ -80,9 +80,9 @@
       let placement = yScaleObj[l.id];
 
       // Determine the previous label height by splitting the id up as it will be stacked and multiplying by text height
-      const numberOfLabelRows = layers[i - 1].id.split('/').length;
-      const prevLabelHeight = layers[i - 1]
-        ? Math.max(0, numberOfLabelRows - 1) * textMultiplier
+      const numberOfLabelRows = layers?.[i - 1]?.id?.split('/')?.length;
+      const prevLabelHeight = numberOfLabelRows
+        ? (numberOfLabelRows - 1) * textMultiplier
         : 0;
 
       yOffset += prevLabelHeight;
