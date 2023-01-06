@@ -22,6 +22,7 @@
 
   let chartHeight = $svgStore?.fills?.chartHeight;
   let yScale = $svgStore?.fills?.yScale;
+  let adjustedYScale = $svgStore?.fills?.adjustedYScale;
 
   let gradients = $svgStore?.fills?.gradients ?? [];
   let svgLayers = $svgStore?.fills?.svgs ?? [];
@@ -65,6 +66,44 @@
       )
       .padding(0.25);
 
+    // Adjust the yScale to account for layer width since D3 scaleBand spaces evenly
+    const yScaleObj = layers.reduce((acc, l) => {
+      acc[l.id] = yScale(l.id);
+      return acc;
+    }, {});
+
+    let yOffset = 0;
+
+    for (let i = 0; i < layers.length; i++) {
+      const l = layers[i];
+      const textMultiplier = 18;
+      let placement = yScaleObj[l.id];
+
+      // Determine the previous label height by splitting the id up as it will be stacked and multiplying by text height
+      const numberOfLabelRows = layers?.[i - 1]?.id?.split('/')?.length;
+      const prevLabelHeight = numberOfLabelRows
+        ? (numberOfLabelRows - 1) * textMultiplier
+        : 0;
+
+      yOffset += prevLabelHeight;
+
+      const nextPlacement = placement + yOffset;
+
+      yScaleObj[l.id] = nextPlacement;
+
+      // For the last layer, add additional space since there isn't
+      // a subsequent layer to add it from the previous
+      if (i === layers.length - 1) {
+        yOffset += l.id.split('/').length * textMultiplier;
+      }
+    }
+
+    // Adjust the height to account for the increased offsets
+    chartHeight = chartHeight + yOffset;
+
+    // Adjusted yScale function to use throughout
+    adjustedYScale = layerId => yScaleObj[layerId];
+
     const getDrawLayer = layer => {
       const { color: layerColor, gradients: layerGradients } = getColor(
         layer,
@@ -85,10 +124,10 @@
     layers = layers.map(getDrawLayer);
 
     // TODO consider combining casing with roads
-    svgLayers = layers.map(d => {
+    svgLayers = layers.map((d, i) => {
       return {
         x: xScale(d.minzoom || MIN_ZOOM),
-        y: yScale(d.id),
+        y: adjustedYScale(d.id),
         height: yScale.bandwidth(),
         width: xScale(d.maxzoom || MAX_ZOOM) - xScale(d.minzoom || MIN_ZOOM),
         fill: d.fill,
@@ -109,6 +148,7 @@
         gradients,
         chartHeight,
         yScale,
+        adjustedYScale,
       },
     }));
 
@@ -129,7 +169,7 @@
     tooltip = {
       text: JSON.stringify(layer.paint, null, 2),
       left: xScale(MAX_ZOOM) + 10,
-      top: yScale(layer.id) + yScale.bandwidth(),
+      top: adjustedYScale(layer.id) + yScale.bandwidth(),
     };
   }
 
@@ -137,7 +177,7 @@
     tooltip = {
       text: `${layerId} had too many possible property/value combinations and has been limited to showing ${$propertyValueComboLimitStore} for performance.`,
       left: 24,
-      top: yScale(expandedLayerId) + yScale.bandwidth() * 0.75,
+      top: adjustedYScale(expandedLayerId) + yScale.bandwidth() * 0.75,
     };
   }
 
@@ -211,7 +251,7 @@
             class="y-axis tick"
             opacity="1"
             transform="translate(0,
-        {yScale(rect.layer.id) + yScale.bandwidth() / 2})"
+        {adjustedYScale(rect.layer.id) + yScale.bandwidth() / 2})"
           >
             {#each rect.layer.id.split('/') as idSection, i}<g>
                 {#if i === 0 && limitHit.includes(idSection)}

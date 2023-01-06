@@ -18,6 +18,7 @@ export const svgStoreInitialState = {
     gradients: [],
     chartHeight: null,
     yScale: null,
+    adjustedYScale: null,
   },
   lines: {
     background: null,
