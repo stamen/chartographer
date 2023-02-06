@@ -21,6 +21,7 @@
   } from './stores';
   import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
   import { stylesEqual } from './styles/styles-equal';
+  import RendererSelect from './RendererSelect.svelte';
 
   export let selectedTab;
   export let style;
@@ -173,12 +174,19 @@
     {:else}
       <div />
     {/if}
-    <div class="custom-url-input">
-      <CustomUrlInput
-        on:styleload={handleCustomUrl}
-        activeStyle={style}
-        disabled={isLoading && loadingProgress !== null}
-      />
+    <div class="right-side-container">
+      {#if selectedTab === 'typography'}
+        <div class="renderer-switch-container">
+          <RendererSelect />
+        </div>
+      {/if}
+      <div class="custom-url-input">
+        <CustomUrlInput
+          on:styleload={handleCustomUrl}
+          activeStyle={style}
+          disabled={isLoading && loadingProgress !== null}
+        />
+      </div>
     </div>
   </div>
   {#if expandedLayers.length}
@@ -277,5 +285,19 @@
     top: calc(36px + (var(--app-padding) * 2));
     right: 0px;
     margin: 36px;
+  }
+
+  .right-side-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .renderer-switch-container {
+    margin-right: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 </style>

@@ -150,7 +150,6 @@
 
 <style>
   .map-style-input {
-    margin-top: 6px;
     display: flex;
   }
 

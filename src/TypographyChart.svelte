@@ -1,7 +1,6 @@
 <script>
   import * as d3 from 'd3';
   import { onMount } from 'svelte';
-  import mapboxGl from 'mapbox-gl';
   import { getValue as getInterpolatedValue } from './interpolation';
   import Tooltip from './Tooltip.svelte';
   import { displayLayersStore } from './stores';
@@ -9,6 +8,7 @@
   export let style;
   export let minZoom = 0;
   export let maxZoom = 24;
+  export let rendererLib;
 
   let map;
 
@@ -25,6 +25,18 @@
   let layers;
   let xAxisFont;
   let zooms = d3.range(minZoom, maxZoom + 1, 2);
+
+  let renderer;
+  // Mapbox and MapLibre share a Map component since they are so similar and utilize the same methods
+  const importRenderer = async () => {
+    if (rendererLib === 'maplibre-gl') {
+      await import('maplibre-gl/dist/maplibre-gl.css');
+      renderer = await import('maplibre-gl');
+    } else {
+      await import('mapbox-gl/dist/mapbox-gl.css');
+      renderer = await import('mapbox-gl');
+    }
+  };
 
   const handleTooltipClose = () => {
     selectedLayerId = null;
@@ -355,7 +367,7 @@
   }
 
   function createMap(style) {
-    map = new mapboxGl.Map({
+    map = new renderer.Map({
       container: 'map',
       style: {
         version: 8,
@@ -399,7 +411,8 @@
     if (map && map.isStyleLoaded()) draw();
   }
 
-  onMount(() => {
+  onMount(async () => {
+    await importRenderer();
     createMap(style);
   });
 </script>

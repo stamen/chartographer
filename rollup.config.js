@@ -41,6 +41,7 @@ export default {
     format: 'iife',
     name: 'app',
     file: 'public/build/bundle.js',
+    inlineDynamicImports: true,
   },
   plugins: [
     svelte({
