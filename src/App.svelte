@@ -1,8 +1,10 @@
 <script>
   import * as d3 from 'd3';
-  import { migrate as migrateMapbox } from '@mapbox/mapbox-gl-style-spec';
+  import {
+    migrate as migrateMapbox,
+    validate,
+  } from '@mapbox/mapbox-gl-style-spec';
   import { migrate as migrateMaplibre } from '@maplibre/maplibre-gl-style-spec';
-
   import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
@@ -20,6 +22,7 @@
     displayLayersStoreInitialState,
     svgStore,
     svgStoreInitialState,
+    styleStore,
   } from './stores';
   import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
   import { stylesEqual } from './styles/styles-equal';
@@ -166,6 +169,8 @@
     if (stylesEqual(style, nextStyle)) return;
     setStyle(nextStyle);
   };
+
+  $: styleStore.set(style);
 </script>
 
 <main
