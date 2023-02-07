@@ -1,6 +1,8 @@
 <script>
   import * as d3 from 'd3';
-  import { migrate } from '@mapbox/mapbox-gl-style-spec';
+  import { migrate as migrateMapbox } from '@mapbox/mapbox-gl-style-spec';
+  import { migrate as migrateMaplibre } from '@maplibre/maplibre-gl-style-spec';
+
   import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
@@ -98,7 +100,18 @@
   }
 
   function setStyle(nextStyle) {
-    style = migrate(nextStyle);
+    // try to migrate w/ Mapbox, then try with MapLibre if that fails
+    try {
+      style = migrateMapbox(nextStyle);
+    } catch (e) {
+      try {
+        style = migrateMaplibre(nextStyle);
+      } catch (err) {
+        console.warn(e);
+        console.warn(err);
+      }
+    }
+
     style = convertStylesheetToRgb(style);
     // On dropping in a style, switch to the fill tab to refresh background layer state
     handleTabChange({ detail: { tab: 'fill' } });

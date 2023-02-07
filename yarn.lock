@@ -1248,10 +1248,10 @@
   resolved "https://registry.yarnpkg.com/@mapbox/whoots-js/-/whoots-js-3.1.0.tgz#497c67a1cef50d1a2459ba60f315e448d2ad87fe"
   integrity sha512-Es6WcD0nO5l+2BOQS4uLfNPYQaNDfbot3X1XUoloz+x0mPDS3eeORZJl06HXjwBG1fOGwCRnzK88LMdxKRrd6Q==
 
-"@maplibre/maplibre-gl-style-spec@^17.0.2":
-  version "17.0.2"
-  resolved "https://registry.yarnpkg.com/@maplibre/maplibre-gl-style-spec/-/maplibre-gl-style-spec-17.0.2.tgz#af738fdb355a2b5ad3fc2fb2d73dbe56450b1996"
-  integrity sha512-iW63wG/ZzeJ2PawkR2g2m4VnFYlUJW22Uu966YhR6K0nDJflDE6QBLanX4wsfZb6adLT6Z106N/apgWKvS2/8g==
+"@maplibre/maplibre-gl-style-spec@^16.0.0":
+  version "16.0.0"
+  resolved "https://registry.yarnpkg.com/@maplibre/maplibre-gl-style-spec/-/maplibre-gl-style-spec-16.0.0.tgz#07ecee35ada4fa91b9fe577b2ff1a2664b48e50d"
+  integrity sha512-dmQpNTNCIk+gak64KbugZ3wvInYk6fS+PW6em2LIgYY/kTbraLYMt/McqDM/AKgpGpJTQuMHAKksO4/d+EUwOw==
   dependencies:
     "@mapbox/jsonlint-lines-primitives" "~2.0.2"
     "@mapbox/unitbezier" "^0.0.0"
