@@ -1,6 +1,10 @@
 <script>
   import * as d3 from 'd3';
-  import { migrate } from '@mapbox/mapbox-gl-style-spec';
+  import {
+    migrate as migrateMapbox,
+    validate,
+  } from '@mapbox/mapbox-gl-style-spec';
+  import { migrate as migrateMaplibre } from '@maplibre/maplibre-gl-style-spec';
   import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
@@ -18,9 +22,11 @@
     displayLayersStoreInitialState,
     svgStore,
     svgStoreInitialState,
+    styleStore,
   } from './stores';
   import ExpandLayersWorker from 'web-worker:./expand-layers-worker.js';
   import { stylesEqual } from './styles/styles-equal';
+  import RendererSelect from './RendererSelect.svelte';
 
   export let selectedTab;
   export let style;
@@ -97,7 +103,18 @@
   }
 
   function setStyle(nextStyle) {
-    style = migrate(nextStyle);
+    // try to migrate w/ Mapbox, then try with MapLibre if that fails
+    try {
+      style = migrateMapbox(nextStyle);
+    } catch (e) {
+      try {
+        style = migrateMaplibre(nextStyle);
+      } catch (err) {
+        console.warn(e);
+        console.warn(err);
+      }
+    }
+
     style = convertStylesheetToRgb(style);
     // On dropping in a style, switch to the fill tab to refresh background layer state
     handleTabChange({ detail: { tab: 'fill' } });
@@ -152,6 +169,8 @@
     if (stylesEqual(style, nextStyle)) return;
     setStyle(nextStyle);
   };
+
+  $: styleStore.set(style);
 </script>
 
 <main
@@ -173,12 +192,19 @@
     {:else}
       <div />
     {/if}
-    <div class="custom-url-input">
-      <CustomUrlInput
-        on:styleload={handleCustomUrl}
-        activeStyle={style}
-        disabled={isLoading && loadingProgress !== null}
-      />
+    <div class="right-side-container">
+      {#if selectedTab === 'typography'}
+        <div class="renderer-switch-container">
+          <RendererSelect />
+        </div>
+      {/if}
+      <div class="custom-url-input">
+        <CustomUrlInput
+          on:styleload={handleCustomUrl}
+          activeStyle={style}
+          disabled={isLoading && loadingProgress !== null}
+        />
+      </div>
     </div>
   </div>
   {#if expandedLayers.length}
@@ -277,5 +303,19 @@
     top: calc(36px + (var(--app-padding) * 2));
     right: 0px;
     margin: 36px;
+  }
+
+  .right-side-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .renderer-switch-container {
+    margin-right: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 </style>

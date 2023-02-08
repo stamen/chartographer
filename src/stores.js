@@ -1,5 +1,7 @@
 import { writable } from 'svelte/store';
 
+export const styleStore = writable(null);
+
 export const propertyValueComboLimitStore = writable(10);
 
 export const loadingStore = writable({ loading: false, progress: null });
@@ -30,3 +32,5 @@ export const svgStoreInitialState = {
   },
 };
 export const svgStore = writable(svgStoreInitialState);
+
+export let rendererStore = writable('mapbox-gl');

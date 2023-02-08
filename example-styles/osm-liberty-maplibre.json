@@ -1193,7 +1193,8 @@
       "filter": ["==", "oneway", 1],
       "layout": {
         "icon-image": "arrow",
-        "symbol-placement": "line"
+        "symbol-placement": "line",
+        "text-overlap": "never"
       }
     },
     {

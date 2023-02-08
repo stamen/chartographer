@@ -8,3 +8,13 @@ export let MARGIN = {
   top: 25,
 };
 export const DISPLAY_CHUNK_SIZE = 100;
+export const renderers = [
+  {
+    name: 'Mapbox GL',
+    value: 'mapbox-gl',
+  },
+  {
+    name: 'Maplibre GL',
+    value: 'maplibre-gl',
+  },
+];
