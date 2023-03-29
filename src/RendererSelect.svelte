@@ -5,7 +5,9 @@
   import { faCircle } from '@fortawesome/free-solid-svg-icons';
   import { validate as validateMapbox } from '@mapbox/mapbox-gl-style-spec';
   import { validate as validateMaplibre } from '@maplibre/maplibre-gl-style-spec';
+  import { isAccessTokenRequired } from './is-access-token-required';
 
+  let displayRenderers = renderers;
   let selectedRenderer;
   let style;
   let errors = [];
@@ -47,6 +49,13 @@
   };
 
   $: setRenderer(selectedRenderer);
+
+  $: if (style) {
+    const mapboxOnly = isAccessTokenRequired(style);
+    if (mapboxOnly) {
+      displayRenderers = displayRenderers.filter(v => v.value === 'mapbox-gl');
+    }
+  }
 </script>
 
 <div class="container">
@@ -62,7 +71,7 @@
   </div>
 
   <select class="renderer-dropdown" bind:value={selectedRenderer}>
-    {#each renderers as renderer}
+    {#each displayRenderers as renderer}
       <option value={renderer.value}> {renderer.name}</option>
     {/each}
   </select>

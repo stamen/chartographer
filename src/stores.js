@@ -34,3 +34,5 @@ export const svgStoreInitialState = {
 export const svgStore = writable(svgStoreInitialState);
 
 export let rendererStore = writable('mapbox-gl');
+
+export const mapboxGlAccessTokenStore = writable('');

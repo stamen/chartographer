@@ -88,6 +88,10 @@
     style = await d3.json(url);
   }
 
+  function revertTab() {
+    handleTabChange({ detail: { tab: 'fill' } });
+  }
+
   function handleTabChange(e) {
     selectedTab = e.detail.tab;
     updateQuery();
@@ -130,6 +134,8 @@
 
   function clearStyle() {
     style = undefined;
+    displayLayersStore.set(displayLayersStoreInitialState);
+    svgStore.set(svgStoreInitialState);
   }
 
   function downloadSvg() {
@@ -193,7 +199,7 @@
       <div />
     {/if}
     <div class="right-side-container">
-      {#if selectedTab === 'typography'}
+      {#if selectedTab === 'typography' && style}
         <div class="renderer-switch-container">
           <RendererSelect />
         </div>
@@ -208,7 +214,7 @@
     </div>
   </div>
   {#if expandedLayers.length}
-    <TabsContent {selectedTab} {style} />
+    <TabsContent {selectedTab} {style} on:revertPage={revertTab} />
     <button class="clear-style-button" on:click={clearStyle}
       >Clear style <div class="icon"><Fa icon={faTrash} /></div></button
     >
