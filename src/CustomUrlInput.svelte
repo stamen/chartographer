@@ -3,6 +3,7 @@
   import { fetchUrl } from './fetch-url';
   import { shortcut } from './shortcut';
   import { stylesEqual } from './styles/styles-equal';
+  import { mapboxGlAccessTokenStore } from './stores';
 
   const dispatch = createEventDispatcher();
 
@@ -62,11 +63,20 @@
     }
   };
 
+  const setMapboxToken = url => {
+    const tokenRegex = /pk.([\w.]+)/g;
+    let nextToken = url.split('access_token').pop();
+    nextToken = nextToken.match(tokenRegex)[0];
+    if ($mapboxGlAccessTokenStore === nextToken) return;
+    mapboxGlAccessTokenStore.set(nextToken);
+  };
+
   // Change the URL by fetching the style and polling if necessary
   const onChangeUrl = async url => {
     const { status } = await fetchStyle(url);
     if (status === '200') {
       selectedUrl = url;
+      setMapboxToken(url);
       // Call poll after setting selectedUrl on success
       poll(url);
     }
