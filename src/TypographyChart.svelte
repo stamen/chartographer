@@ -1,15 +1,19 @@
 <script>
   import * as d3 from 'd3';
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { getValue as getInterpolatedValue } from './interpolation';
   import Tooltip from './Tooltip.svelte';
-  import { displayLayersStore } from './stores';
+  import { displayLayersStore, mapboxGlAccessTokenStore } from './stores';
+  import { isAccessTokenRequired } from './is-access-token-required';
+
+  const dispatch = createEventDispatcher();
 
   export let style;
   export let minZoom = 0;
   export let maxZoom = 24;
   export let rendererLib;
 
+  let tokenError = null;
   let map;
 
   const width = 2500;
@@ -366,6 +370,15 @@
     drawLabels();
   }
 
+  function removeMap() {
+    renderer.accessToken = null;
+    mapboxGlAccessTokenStore.set('');
+    if (map) {
+      map.remove();
+      map = undefined;
+    }
+  }
+
   function createMap(style) {
     map = new renderer.Map({
       container: 'map',
@@ -384,6 +397,17 @@
       zoom: 14,
     });
 
+    map.on('error', async e => {
+      const { error } = e;
+      if (
+        map &&
+        error.message.includes('invalid Mapbox access token') &&
+        error.status === 401
+      ) {
+        tokenError = 'Mapbox access token is invalid';
+        return;
+      }
+    });
     map.on('load', draw);
     map.on('click', handleClick);
     map.on('mousemove', handleHover);
@@ -405,16 +429,63 @@
     handleTooltipClose();
   };
 
-  $: {
+  $: if (style) {
     layers = getLayers(style);
     height = layers.length * 45;
     if (map && map.isStyleLoaded()) draw();
   }
 
+  const styleRequiresAccessToken = style => {
+    const isMapboxGl = rendererLib === 'mapbox-gl';
+    if (!isMapboxGl) return false;
+    return isAccessTokenRequired(style);
+  };
+
+  const getAccessToken = () => {
+    const defaultState = 'pk.';
+    let token = prompt('Please enter your Mapbox access token:', defaultState);
+    if (token !== null && !token.startsWith('pk.')) {
+      alert(`Your token must begin with '${defaultState}'`);
+      initMap();
+    } else if (token !== null && token !== '' && token !== defaultState) {
+      return token;
+    } else {
+      removeMap();
+      alert(
+        'You will not be able to view the Typography chart without a token.'
+      );
+      dispatch('revertPage');
+    }
+  };
+
+  const initMap = async () => {
+    const requiresAccessToken = styleRequiresAccessToken(style);
+    let token;
+    if (requiresAccessToken && !$mapboxGlAccessTokenStore) {
+      token = await getAccessToken();
+      if (token === null) return;
+      mapboxGlAccessTokenStore.set(token);
+      renderer.accessToken = token;
+    }
+    createMap(style);
+  };
+
   onMount(async () => {
     await importRenderer();
-    createMap(style);
+    initMap();
   });
+
+  $: if (tokenError) {
+    alert(tokenError);
+    tokenError = null;
+    removeMap();
+    initMap();
+  }
+
+  $: if (style === undefined) {
+    removeMap();
+    dispatch('revertPage');
+  }
 </script>
 
 <div class="typography-chart">

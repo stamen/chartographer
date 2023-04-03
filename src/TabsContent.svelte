@@ -20,7 +20,7 @@
     <LinesChart {style} />
   {:else if selectedTab === 'typography'}
     {#key rendererLib}
-      <TypographyChart {style} {rendererLib} />
+      <TypographyChart {style} {rendererLib} on:revertPage />
     {/key}
   {/if}
 </div>
