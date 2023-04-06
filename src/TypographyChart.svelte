@@ -461,7 +461,9 @@
   const initMap = async () => {
     const requiresAccessToken = styleRequiresAccessToken(style);
     let token;
-    if (requiresAccessToken && !$mapboxGlAccessTokenStore) {
+    if ($mapboxGlAccessTokenStore) {
+      renderer.accessToken = $mapboxGlAccessTokenStore;
+    } else if (requiresAccessToken && !$mapboxGlAccessTokenStore) {
       token = await getAccessToken();
       if (token === null) return;
       mapboxGlAccessTokenStore.set(token);
