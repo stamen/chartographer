@@ -185,7 +185,7 @@
     setStyle(nextStyle, nextUrl);
   };
 
-  $: styleStore.update(v => ({ ...v, style }));
+  $: styleStore.set({ url, style });
 
   $: if (url) {
     updateQuery();
