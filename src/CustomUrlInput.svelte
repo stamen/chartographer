@@ -1,13 +1,14 @@
 <script>
-  import { onDestroy, onMount, createEventDispatcher } from 'svelte';
+  import { onDestroy, createEventDispatcher } from 'svelte';
   import { fetchUrl } from './fetch-url';
   import { shortcut } from './shortcut';
   import { stylesEqual } from './styles/styles-equal';
-  import { mapboxGlAccessTokenStore } from './stores';
+  import { mapboxGlAccessTokenStore, styleStore } from './stores';
 
   const dispatch = createEventDispatcher();
 
   export let activeStyle;
+  export let activeUrl;
   export let disabled = false;
 
   let currentStyle;
@@ -54,7 +55,8 @@
         style = data;
         poll(url);
         currentStyle = style;
-        dispatch('styleload', { style });
+        selectedUrl = url;
+        dispatch('styleload', { style, url });
         return { status: '200' };
       }
     } catch (err) {
@@ -75,9 +77,7 @@
   const onChangeUrl = async url => {
     const { status } = await fetchStyle(url);
     if (status === '200') {
-      selectedUrl = url;
       setMapboxToken(url);
-      // Call poll after setting selectedUrl on success
       poll(url);
     }
   };
@@ -132,6 +132,11 @@
   $: {
     activeStyle;
     resetTextInput();
+  }
+
+  // Runs if activeUrl is different which is only on mount
+  $: if (activeUrl && activeUrl !== selectedUrl) {
+    fetchStyle(activeUrl);
   }
 </script>
 

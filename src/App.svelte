@@ -32,6 +32,8 @@
   export let style;
   export let loadDefaultStyle = false;
 
+  let url;
+
   let isLoading;
   let loadingProgress;
   loadingStore.subscribe(value => {
@@ -50,6 +52,10 @@
       selectedTab = query.selectedTab;
     } else {
       selectedTab = 'fill';
+    }
+
+    if (query.url) {
+      url = decodeURIComponent(query.url);
     }
 
     if (loadDefaultStyle) {
@@ -77,6 +83,7 @@
   function getState() {
     let state = {};
     if (selectedTab) state.selectedTab = selectedTab;
+    if (url) state.url = url;
     return state;
   }
 
@@ -106,7 +113,7 @@
     e.preventDefault();
   }
 
-  function setStyle(nextStyle) {
+  function setStyle(nextStyle, nextUrl) {
     // try to migrate w/ Mapbox, then try with MapLibre if that fails
     try {
       style = migrateMapbox(nextStyle);
@@ -120,6 +127,7 @@
     }
 
     style = convertStylesheetToRgb(style);
+    url = nextUrl;
     // On dropping in a style, switch to the fill tab to refresh background layer state
     handleTabChange({ detail: { tab: 'fill' } });
   }
@@ -134,6 +142,7 @@
 
   function clearStyle() {
     style = undefined;
+    url = undefined;
     displayLayersStore.set(displayLayersStoreInitialState);
     svgStore.set(svgStoreInitialState);
   }
@@ -171,12 +180,16 @@
   }
 
   const handleCustomUrl = e => {
-    let { style: nextStyle } = e.detail;
+    let { style: nextStyle, url: nextUrl } = e.detail;
     if (stylesEqual(style, nextStyle)) return;
-    setStyle(nextStyle);
+    setStyle(nextStyle, nextUrl);
   };
 
-  $: styleStore.set(style);
+  $: styleStore.update(v => ({ ...v, style }));
+
+  $: if (url) {
+    updateQuery();
+  }
 </script>
 
 <main
@@ -208,6 +221,7 @@
         <CustomUrlInput
           on:styleload={handleCustomUrl}
           activeStyle={style}
+          activeUrl={url}
           disabled={isLoading && loadingProgress !== null}
         />
       </div>

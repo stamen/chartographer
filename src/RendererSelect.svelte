@@ -12,7 +12,7 @@
   let style;
   let errors = [];
 
-  styleStore.subscribe(value => (style = value));
+  styleStore.subscribe(value => ({ style } = value));
 
   const getBetterErrorMessages = errors => {
     return errors.map(error => {
