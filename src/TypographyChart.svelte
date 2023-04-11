@@ -395,6 +395,7 @@
       scrollZoom: false,
       center: [0, 10],
       zoom: 14,
+      preserveDrawingBuffer: true,
     });
 
     map.on('error', async e => {

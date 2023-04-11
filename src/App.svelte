@@ -1,5 +1,7 @@
 <script>
   import * as d3 from 'd3';
+  import { saveAs } from 'file-saver';
+  import html2canvas from 'html2canvas';
   import {
     migrate as migrateMapbox,
     validate,
@@ -156,6 +158,16 @@
     element.remove();
   }
 
+  const downloadTypographyPng = () => {
+    const typographyChart = document.getElementById('map');
+
+    const filename = `${style.id}-${selectedTab}-chart`;
+
+    html2canvas(typographyChart).then(canvas => {
+      saveAs(canvas.toDataURL(), `${filename}.png`);
+    });
+  };
+
   $: if (style) {
     displayLayersStore.set(displayLayersStoreInitialState);
     svgStore.set(svgStoreInitialState);
@@ -193,6 +205,13 @@
           class="download-button"
           disabled={isLoading}
           >Download SVG <div class="icon"><Fa icon={faDownload} /></div></button
+        >
+      {:else}
+        <button
+          on:click={downloadTypographyPng}
+          class="download-button"
+          disabled={isLoading}
+          >Download PNG <div class="icon"><Fa icon={faDownload} /></div></button
         >
       {/if}
     {:else}
@@ -268,6 +287,7 @@
     right: 12px;
     display: flex;
     align-items: center;
+    z-index: 1000;
   }
 
   .clear-style-button {
@@ -292,6 +312,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    z-index: 1000;
   }
 
   .loading-screen {
