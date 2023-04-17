@@ -29,12 +29,15 @@
 
   onMount(() => {
     if (activeUrl) {
+      selectedUrl = activeUrl;
       fetchStyle(activeUrl);
     }
   });
 
   // This will continue to poll/fetch the style at a local URL to allow live changes to be picked up
   const poll = url => {
+    console.log(selectedUrl);
+
     const pollCondition = str => {
       if (!allowPolling || !str || selectedUrl !== str) return false;
       if (!stylesEqual(currentStyle, activeStyle)) return false;
@@ -59,7 +62,7 @@
       if (data && typeof data === 'object') {
         // TODO create checks by type for non-mapbox maps
         style = data;
-        selectedUrl = url;
+
         poll(url);
         currentStyle = style;
         dispatch('styleload', { style, url });
@@ -74,8 +77,8 @@
   const setMapboxToken = url => {
     const tokenRegex = /pk.([\w.]+)/g;
     let nextToken = url.split('access_token').pop();
-    nextToken = nextToken.match(tokenRegex)[0];
-    if ($mapboxGlAccessTokenStore === nextToken) return;
+    nextToken = nextToken.match(tokenRegex)?.[0];
+    if ($mapboxGlAccessTokenStore !== nextToken) return;
     mapboxGlAccessTokenStore.set(nextToken);
   };
 
@@ -83,6 +86,7 @@
   const onChangeUrl = async url => {
     const { status } = await fetchStyle(url);
     if (status === '200') {
+      selectedUrl = url;
       setMapboxToken(url);
       poll(url);
     }
