@@ -5,7 +5,6 @@
     validate,
   } from '@mapbox/mapbox-gl-style-spec';
   import { migrate as migrateMaplibre } from '@maplibre/maplibre-gl-style-spec';
-  import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
   import { Circle } from 'svelte-loading-spinners';
@@ -46,7 +45,7 @@
     expandedLayers = value.layers;
   });
 
-  onMount(() => {
+  const initializeVarsFromHash = () => {
     const query = readQuery();
     if (query.selectedTab) {
       selectedTab = query.selectedTab;
@@ -61,7 +60,11 @@
     if (loadDefaultStyle) {
       loadStyleUrl('./style.json');
     }
-  });
+  };
+
+  // Update variables before mount from hash so
+  // onMount works as expected in downstream components
+  initializeVarsFromHash();
 
   const setExpandedLayers = style => {
     const { layers } = style;
@@ -128,6 +131,7 @@
 
     style = convertStylesheetToRgb(style);
     url = nextUrl;
+
     // On dropping in a style, switch to the fill tab to refresh background layer state
     handleTabChange({ detail: { tab: 'fill' } });
   }

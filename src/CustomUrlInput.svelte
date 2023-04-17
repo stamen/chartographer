@@ -1,5 +1,5 @@
 <script>
-  import { onDestroy, createEventDispatcher } from 'svelte';
+  import { onDestroy, createEventDispatcher, onMount } from 'svelte';
   import { fetchUrl } from './fetch-url';
   import { shortcut } from './shortcut';
   import { stylesEqual } from './styles/styles-equal';
@@ -25,6 +25,12 @@
   onDestroy(() => {
     // Cancel any polling in destroyed components
     allowPolling = false;
+  });
+
+  onMount(() => {
+    if (activeUrl) {
+      fetchStyle(activeUrl);
+    }
   });
 
   // This will continue to poll/fetch the style at a local URL to allow live changes to be picked up
@@ -132,11 +138,6 @@
   $: {
     activeStyle;
     resetTextInput();
-  }
-
-  // Runs if activeUrl is different which is only on mount
-  $: if (activeUrl && activeUrl !== selectedUrl) {
-    fetchStyle(activeUrl);
   }
 </script>
 
