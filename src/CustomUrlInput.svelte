@@ -78,7 +78,7 @@
     const tokenRegex = /pk.([\w.]+)/g;
     let nextToken = url.split('access_token').pop();
     nextToken = nextToken.match(tokenRegex)?.[0];
-    if ($mapboxGlAccessTokenStore !== nextToken) return;
+    if ($mapboxGlAccessTokenStore === nextToken) return;
     mapboxGlAccessTokenStore.set(nextToken);
   };
 
