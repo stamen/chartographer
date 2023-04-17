@@ -36,8 +36,6 @@
 
   // This will continue to poll/fetch the style at a local URL to allow live changes to be picked up
   const poll = url => {
-    console.log(selectedUrl);
-
     const pollCondition = str => {
       if (!allowPolling || !str || selectedUrl !== str) return false;
       if (!stylesEqual(currentStyle, activeStyle)) return false;
