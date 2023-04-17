@@ -59,9 +59,9 @@
       if (data && typeof data === 'object') {
         // TODO create checks by type for non-mapbox maps
         style = data;
+        selectedUrl = url;
         poll(url);
         currentStyle = style;
-        selectedUrl = url;
         dispatch('styleload', { style, url });
         return { status: '200' };
       }
