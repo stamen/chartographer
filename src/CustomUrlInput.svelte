@@ -1,13 +1,14 @@
 <script>
-  import { onDestroy, onMount, createEventDispatcher } from 'svelte';
+  import { onDestroy, createEventDispatcher, onMount } from 'svelte';
   import { fetchUrl } from './fetch-url';
   import { shortcut } from './shortcut';
   import { stylesEqual } from './styles/styles-equal';
-  import { mapboxGlAccessTokenStore } from './stores';
+  import { mapboxGlAccessTokenStore, styleStore } from './stores';
 
   const dispatch = createEventDispatcher();
 
   export let activeStyle;
+  export let activeUrl;
   export let disabled = false;
 
   let currentStyle;
@@ -24,6 +25,13 @@
   onDestroy(() => {
     // Cancel any polling in destroyed components
     allowPolling = false;
+  });
+
+  onMount(() => {
+    if (activeUrl) {
+      selectedUrl = activeUrl;
+      fetchStyle(activeUrl);
+    }
   });
 
   // This will continue to poll/fetch the style at a local URL to allow live changes to be picked up
@@ -52,9 +60,10 @@
       if (data && typeof data === 'object') {
         // TODO create checks by type for non-mapbox maps
         style = data;
+
         poll(url);
         currentStyle = style;
-        dispatch('styleload', { style });
+        dispatch('styleload', { style, url });
         return { status: '200' };
       }
     } catch (err) {
@@ -66,7 +75,7 @@
   const setMapboxToken = url => {
     const tokenRegex = /pk.([\w.]+)/g;
     let nextToken = url.split('access_token').pop();
-    nextToken = nextToken.match(tokenRegex)[0];
+    nextToken = nextToken.match(tokenRegex)?.[0];
     if ($mapboxGlAccessTokenStore === nextToken) return;
     mapboxGlAccessTokenStore.set(nextToken);
   };
@@ -77,7 +86,6 @@
     if (status === '200') {
       selectedUrl = url;
       setMapboxToken(url);
-      // Call poll after setting selectedUrl on success
       poll(url);
     }
   };

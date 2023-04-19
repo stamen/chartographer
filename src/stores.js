@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 
-export const styleStore = writable(null);
+export const styleStore = writable({ style: null, url: null });
 
 export const propertyValueComboLimitStore = writable(10);
 

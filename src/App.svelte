@@ -7,7 +7,6 @@
     validate,
   } from '@mapbox/mapbox-gl-style-spec';
   import { migrate as migrateMaplibre } from '@maplibre/maplibre-gl-style-spec';
-  import { onMount } from 'svelte';
   import Fa from 'svelte-fa/src/fa.svelte';
   import { faTrash, faDownload } from '@fortawesome/free-solid-svg-icons';
   import { Circle } from 'svelte-loading-spinners';
@@ -34,6 +33,8 @@
   export let style;
   export let loadDefaultStyle = false;
 
+  let url;
+
   let isLoading;
   let loadingProgress;
   loadingStore.subscribe(value => {
@@ -46,7 +47,7 @@
     expandedLayers = value.layers;
   });
 
-  onMount(() => {
+  const initializeVarsFromHash = () => {
     const query = readQuery();
     if (query.selectedTab) {
       selectedTab = query.selectedTab;
@@ -54,10 +55,18 @@
       selectedTab = 'fill';
     }
 
+    if (query.url) {
+      url = decodeURIComponent(query.url);
+    }
+
     if (loadDefaultStyle) {
       loadStyleUrl('./style.json');
     }
-  });
+  };
+
+  // Update variables before mount from hash so
+  // onMount works as expected in downstream components
+  initializeVarsFromHash();
 
   const setExpandedLayers = style => {
     const { layers } = style;
@@ -79,6 +88,7 @@
   function getState() {
     let state = {};
     if (selectedTab) state.selectedTab = selectedTab;
+    if (url) state.url = url;
     return state;
   }
 
@@ -108,7 +118,7 @@
     e.preventDefault();
   }
 
-  function setStyle(nextStyle) {
+  function setStyle(nextStyle, nextUrl) {
     // try to migrate w/ Mapbox, then try with MapLibre if that fails
     try {
       style = migrateMapbox(nextStyle);
@@ -122,6 +132,8 @@
     }
 
     style = convertStylesheetToRgb(style);
+    url = nextUrl;
+
     // On dropping in a style, switch to the fill tab to refresh background layer state
     handleTabChange({ detail: { tab: 'fill' } });
   }
@@ -136,6 +148,7 @@
 
   function clearStyle() {
     style = undefined;
+    url = undefined;
     displayLayersStore.set(displayLayersStoreInitialState);
     svgStore.set(svgStoreInitialState);
   }
@@ -183,12 +196,16 @@
   }
 
   const handleCustomUrl = e => {
-    let { style: nextStyle } = e.detail;
+    let { style: nextStyle, url: nextUrl } = e.detail;
     if (stylesEqual(style, nextStyle)) return;
-    setStyle(nextStyle);
+    setStyle(nextStyle, nextUrl);
   };
 
-  $: styleStore.set(style);
+  $: styleStore.set({ url, style });
+
+  $: if (url) {
+    updateQuery();
+  }
 </script>
 
 <main
@@ -227,6 +244,7 @@
         <CustomUrlInput
           on:styleload={handleCustomUrl}
           activeStyle={style}
+          activeUrl={url}
           disabled={isLoading && loadingProgress !== null}
         />
       </div>
