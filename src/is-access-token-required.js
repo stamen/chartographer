@@ -11,6 +11,7 @@ const isAccessTokenRequired = style => {
     .reduce((acc, s) => {
       if (s.url) return acc.concat(s.url);
       if (s.tiles) return acc.concat(s.tiles);
+      return acc;
     }, [])
     .filter(isMapboxUrl).length;
 
