@@ -305,7 +305,7 @@
 
   function handleTooltipWarning(layerId, expandedLayerId) {
     tooltip = {
-      text: `${layerId} had too many possible property/value combinations and has been limited to showing ${$propertyValueComboLimitStore} for performance.`,
+      text: `${layerId} had too many possible property/value combinations and has been limited to showing ${$propertyValueComboLimitStore} for performance.\ni'm happy for u tho\nor sorry that happened`,
       left: 24,
       top: adjustedYScale(expandedLayerId) + yScale.bandwidth() * 0.75,
     };
