@@ -1,6 +1,6 @@
 # chartographer
 
-Generate visualizations of a Mapbox GL stylesheet to better understand how layers are rendered by zoom level.
+Generate visualizations of a Mapbox or Maplibre GL stylesheet to better understand how layers are rendered by zoom level.
 
 Learn more in our blog post "[Visualize a cross section of your map with Chartographer](https://stamen.com/visualize-a-cross-section-of-your-map-with-chartographer/)"
 
