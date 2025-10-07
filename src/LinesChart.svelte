@@ -88,15 +88,13 @@
     let path;
 
     if (Array.isArray(width)) {
-      const [
-        expressionType,
-        [interpolationType, interpolationBase],
-        [attribute],
-      ] = width;
+      let [expressionType, [interpolationType, interpolationBase], attribute] =
+        width;
       if (
         expressionType === 'interpolate' &&
         interpolationType === 'linear' &&
-        attribute === 'zoom'
+        Array.isArray(attribute) &&
+        attribute[0] === 'zoom'
       ) {
         // TODO look into base for interpolation
 
