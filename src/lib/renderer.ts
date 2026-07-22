@@ -31,6 +31,8 @@ export class RenderQueue {
 	private container: HTMLDivElement | null = null;
 	private mapWidth = 0;
 	private mapHeight = 0;
+	private prevPaintKeys = new Set<string>();
+	private prevLayoutKeys = new Set<string>();
 
 	enqueue(job: Omit<RenderJob, 'resolve' | 'reject'>): Promise<string> {
 		return new Promise((resolve, reject) => {
@@ -111,6 +113,9 @@ export class RenderQueue {
 				this.map!.once('load', () => res());
 				this.map!.once('error', (e) => rej(e.error ?? new Error('map load error')));
 			});
+
+			this.prevPaintKeys = new Set(Object.keys(job.paint));
+			this.prevLayoutKeys = new Set(Object.keys(job.layout));
 		} else {
 			// Subsequent use — update the existing map in place.
 			if (needsResize) {
@@ -130,15 +135,28 @@ export class RenderQueue {
 			// Swap the background color.
 			this.map.setPaintProperty('background', 'background-color', job.backgroundColor);
 
-			// Replace the content layer with fresh paint + layout for this job.
-			this.map.removeLayer('__layer__');
-			this.map.addLayer({
-				id: '__layer__',
-				type: job.layerType,
-				source: 'zoom-segments',
-				layout: job.layout,
-				paint: job.paint
-			} as Parameters<typeof this.map.addLayer>[0]);
+			// Mutate the existing layer's paint/layout in place rather than
+			// remove+add — removing the layer destroys its bucket mid-frame,
+			// and a render already queued by setData()/setPaintProperty()
+			// above can fire against the half-torn-down layer, throwing deep
+			// inside MapLibre's uniform setters (undefined color arrays).
+			const paintKeys = new Set(Object.keys(job.paint));
+			for (const key of this.prevPaintKeys) {
+				if (!paintKeys.has(key)) this.map.setPaintProperty('__layer__', key, undefined);
+			}
+			for (const [key, value] of Object.entries(job.paint)) {
+				this.map.setPaintProperty('__layer__', key, value);
+			}
+			this.prevPaintKeys = paintKeys;
+
+			const layoutKeys = new Set(Object.keys(job.layout));
+			for (const key of this.prevLayoutKeys) {
+				if (!layoutKeys.has(key)) this.map.setLayoutProperty('__layer__', key, undefined);
+			}
+			for (const [key, value] of Object.entries(job.layout)) {
+				this.map.setLayoutProperty('__layer__', key, value);
+			}
+			this.prevLayoutKeys = layoutKeys;
 
 			// Fit zoom in case width changed.
 			if (needsResize) {
