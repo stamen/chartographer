@@ -1,0 +1,88 @@
+{
+  "version": 8,
+  "name": "simple",
+  "sources": {
+    "dummy": { "type": "vector", "tiles": [] }
+  },
+  "layers": [
+    {
+      "id": "fill-literal",
+      "type": "fill",
+      "source": "dummy",
+      "source-layer": "land",
+      "paint": {
+        "fill-color": "#6baed6"
+      }
+    },
+    {
+      "id": "fill-linear",
+      "type": "fill",
+      "source": "dummy",
+      "source-layer": "land",
+      "paint": {
+        "fill-color": ["interpolate", ["linear"], ["zoom"], 0, "#f7fbff", 10, "#2171b5", 22, "#08306b"]
+      }
+    },
+    {
+      "id": "fill-step",
+      "type": "fill",
+      "source": "dummy",
+      "source-layer": "land",
+      "paint": {
+        "fill-color": ["step", ["zoom"], "#ffffcc", 6, "#a1dab4", 12, "#41b6c4", 18, "#225ea8"]
+      }
+    },
+    {
+      "id": "line-literal",
+      "type": "line",
+      "source": "dummy",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#e34a33",
+        "line-width": 2
+      }
+    },
+    {
+      "id": "line-linear",
+      "type": "line",
+      "source": "dummy",
+      "source-layer": "road",
+      "paint": {
+        "line-color": ["interpolate", ["linear"], ["zoom"], 0, "#ffffb2", 10, "#fd8d3c", 22, "#bd0026"],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 1, 10, 4, 22, 16]
+      }
+    },
+    {
+      "id": "line-step",
+      "type": "line",
+      "source": "dummy",
+      "source-layer": "road",
+      "paint": {
+        "line-color": ["step", ["zoom"], "#d9f0a3", 8, "#78c679", 14, "#238443"],
+        "line-width": ["step", ["zoom"], 1, 8, 4, 14, 10]
+      }
+    },
+    {
+      "id": "line-dashed",
+      "type": "line",
+      "source": "dummy",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#756bb1",
+        "line-width": 3,
+        "line-dasharray": [6, 3]
+      }
+    },
+    {
+      "id": "line-dotted",
+      "type": "line",
+      "source": "dummy",
+      "source-layer": "road",
+      "paint": {
+        "line-color": "#e6550d",
+        "line-width": 4,
+        "line-dasharray": [0.5, 4]
+      }
+    }
+  ]
+}
