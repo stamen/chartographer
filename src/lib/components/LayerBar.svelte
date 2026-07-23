@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { FeatureCollection } from 'geojson';
 	import type { RenderQueue } from '$lib/renderer';
+	import { getCachedRender, setCachedRender, renderCacheKey } from '$lib/renderCache';
 
 	let {
 		layerId,
@@ -38,6 +39,22 @@
 		const generation = ++renderGeneration;
 		const width = container?.clientWidth || 800;
 
+		const cacheKey = renderCacheKey({
+			layerType,
+			paint,
+			layout,
+			geojson: currentGeojson,
+			width,
+			height
+		});
+
+		const cached = getCachedRender(cacheKey);
+		if (cached) {
+			dataUrl = cached;
+			renderError = null;
+			return;
+		}
+
 		dataUrl = null;
 		renderError = null;
 
@@ -52,6 +69,7 @@
 				height
 			})
 			.then((url) => {
+				setCachedRender(cacheKey, url);
 				if (generation !== renderGeneration) return;
 				dataUrl = url;
 			})

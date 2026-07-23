@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { styleStore } from '$lib/styleStore.svelte';
 	import { extractFillLayers, extractBackgroundPaint } from '$lib/styleParser';
 	import { buildFillGeoJSON } from '$lib/geojson';
@@ -8,6 +9,11 @@
 	import BackgroundSwatch from '$lib/components/BackgroundSwatch.svelte';
 
 	const queue = new RenderQueue();
+	// Otherwise this page's hidden MapLibre instance (and its WebGL context)
+	// keeps running in the background indefinitely after navigating away —
+	// any already-finished renders are still cached and reused (see
+	// renderCache.ts), so nothing is lost by tearing this down.
+	onDestroy(() => queue.destroy());
 
 	// ---------------------------------------------------------------------------
 	// Fills page

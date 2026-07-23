@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { RenderQueue } from '$lib/renderer';
 	import { buildFillGeoJSON } from '$lib/geojson';
+	import { getCachedRender, setCachedRender, renderCacheKey } from '$lib/renderCache';
 
 	// ---------------------------------------------------------------------------
 	// Renders the style's background layer ONCE as a small horizontal swatch
@@ -28,21 +30,31 @@
 	const SWATCH_HEIGHT = 50;
 
 	const queue = new RenderQueue();
+	onDestroy(() => queue.destroy());
 	let dataUrl = $state<string | null>(null);
 
 	$effect(() => {
 		const paint = backdropPaint;
+		const job = {
+			layerType: 'fill' as const,
+			paint,
+			layout: {},
+			geojson: buildFillGeoJSON(),
+			width: SWATCH_WIDTH,
+			height: SWATCH_HEIGHT
+		};
+
+		const cacheKey = renderCacheKey(job);
+		const cached = getCachedRender(cacheKey);
+		if (cached) {
+			dataUrl = cached;
+			return;
+		}
+
 		queue
-			.enqueue({
-				layerId: 'background-swatch',
-				layerType: 'fill',
-				paint,
-				layout: {},
-				geojson: buildFillGeoJSON(),
-				width: SWATCH_WIDTH,
-				height: SWATCH_HEIGHT
-			})
+			.enqueue({ layerId: 'background-swatch', ...job })
 			.then((url) => {
+				setCachedRender(cacheKey, url);
 				dataUrl = url;
 			})
 			.catch(() => {
