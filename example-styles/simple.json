@@ -33,6 +33,29 @@
       }
     },
     {
+      "id": "fill-match-class",
+      "type": "fill",
+      "source": "dummy",
+      "source-layer": "land",
+      "paint": {
+        "fill-color": ["match", ["get", "class"], "primary", "#e41a1c", "secondary", "#377eb8", "#999999"]
+      }
+    },
+    {
+      "id": "fill-case-class",
+      "type": "fill",
+      "source": "dummy",
+      "source-layer": "land",
+      "paint": {
+        "fill-color": [
+          "case",
+          ["==", ["get", "class"], "primary"], "#e41a1c",
+          ["==", ["get", "class"], "secondary"], "#377eb8",
+          "#999999"
+        ]
+      }
+    },
+    {
       "id": "line-literal",
       "type": "line",
       "source": "dummy",
@@ -60,6 +83,36 @@
       "paint": {
         "line-color": ["step", ["zoom"], "#d9f0a3", 8, "#78c679", 14, "#238443"],
         "line-width": ["step", ["zoom"], 1, 8, 4, 14, 10]
+      }
+    },
+    {
+      "id": "line-match-class",
+      "type": "line",
+      "source": "dummy",
+      "source-layer": "road",
+      "paint": {
+        "line-color": ["match", ["get", "class"], "primary", "#e41a1c", "secondary", "#377eb8", "#999999"],
+        "line-width": ["match", ["get", "class"], "primary", 12, "secondary", 3, 1]
+      }
+    },
+    {
+      "id": "line-case-class",
+      "type": "line",
+      "source": "dummy",
+      "source-layer": "road",
+      "paint": {
+        "line-color": [
+          "case",
+          ["==", ["get", "class"], "primary"], "#e41a1c",
+          ["==", ["get", "class"], "secondary"], "#377eb8",
+          "#999999"
+        ],
+        "line-width": [
+          "case",
+          ["==", ["get", "class"], "primary"], 12,
+          ["==", ["get", "class"], "secondary"], 3,
+          1
+        ]
       }
     },
     {

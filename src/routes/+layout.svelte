@@ -66,6 +66,10 @@
 		height: 44px;
 		border-bottom: 1px solid #e0e0e0;
 		font-size: 13px;
+		position: sticky;
+		top: 0;
+		background: #fff;
+		z-index: 10;
 
 		.brand {
 			font-weight: 700;

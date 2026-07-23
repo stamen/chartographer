@@ -4,6 +4,7 @@
 	import { buildFillGeoJSON } from '$lib/geojson';
 	import { RenderQueue } from '$lib/renderer';
 	import LayerBar from '$lib/components/LayerBar.svelte';
+	import DataConfigModal from '$lib/components/DataConfigModal.svelte';
 
 	const queue = new RenderQueue();
 
@@ -17,9 +18,11 @@
 	// the style's paint expression evaluates to at that zoom level.
 	// ---------------------------------------------------------------------------
 
-	// Build the shared fill GeoJSON once — all LayerBar instances reuse it.
-	// It's 220 vertical polygon strips spanning the full world extent.
-	const fillGeoJSON = buildFillGeoJSON();
+	// Shared fill GeoJSON — 220 vertical polygon strips spanning the full
+	// world extent. Recomputed (and every bar re-rendered) whenever the
+	// user applies a data config change, since that changes feature
+	// properties that match/case expressions read.
+	let fillGeoJSON = $derived(buildFillGeoJSON(styleStore.dataConfig.fill));
 
 	// Reactively re-extract layers whenever the loaded style changes.
 	let fillLayers = $derived(styleStore.current ? extractFillLayers(styleStore.current) : []);
@@ -30,6 +33,7 @@
 
 <header class="page-header">
 	<h2>Fill Layers <span class="count">({fillLayers.length})</span></h2>
+	<DataConfigModal layerType="fill" />
 </header>
 
 {#if fillLayers.length === 0}
@@ -77,7 +81,16 @@
 
 <style lang="scss">
 	.page-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
 		margin-bottom: 16px;
+		padding: 16px 0;
+		position: sticky;
+		top: 45px;
+		background: #fff;
+		z-index: 5;
 	}
 
 	h2 {

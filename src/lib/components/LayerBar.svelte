@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { FeatureCollection } from 'geojson';
 	import type { RenderQueue } from '$lib/renderer';
 
@@ -29,14 +28,29 @@
 	let dataUrl = $state<string | null>(null);
 	let renderError = $state<string | null>(null);
 
-	onMount(() => {
+	// Tracks the most recently started render so a slower, superseded
+	// enqueue() (e.g. from rapid back-to-back data config changes) can't
+	// overwrite a newer result once it finally resolves.
+	let renderGeneration = 0;
+
+	// Re-renders whenever geojson changes — not just once on mount — since
+	// applying a new data config produces a new geojson reference.
+	$effect(() => {
+		const currentGeojson = geojson;
+		const generation = ++renderGeneration;
 		const width = container?.clientWidth || 800;
+
+		dataUrl = null;
+		renderError = null;
+
 		queue
-			.enqueue({ layerId, layerType, paint, layout, geojson, backgroundColor, width, height })
+			.enqueue({ layerId, layerType, paint, layout, geojson: currentGeojson, backgroundColor, width, height })
 			.then((url) => {
+				if (generation !== renderGeneration) return;
 				dataUrl = url;
 			})
 			.catch((err) => {
+				if (generation !== renderGeneration) return;
 				renderError = String(err);
 			});
 	});

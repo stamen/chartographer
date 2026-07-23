@@ -1,4 +1,5 @@
 import type { FeatureCollection, Feature, Polygon, LineString } from 'geojson';
+import type { DataFieldValue } from './dataFieldCollector';
 
 // ---------------------------------------------------------------------------
 // Fake GeoJSON builders
@@ -33,9 +34,13 @@ function zoomToLon(zoom: number): number {
  * regardless of the container's aspect ratio.
  *
  * The "zoom" property on each feature drives fill-color after expression
- * rewriting.
+ * rewriting. `dataConfig` adds any user-chosen data field overrides (see
+ * DataConfigModal) so match/case expressions in the style evaluate against
+ * real values instead of always hitting their fallback branch.
  */
-export function buildFillGeoJSON(): FeatureCollection {
+export function buildFillGeoJSON(
+	dataConfig: Record<string, DataFieldValue> = {}
+): FeatureCollection {
 	const features: Feature<Polygon>[] = [];
 
 	for (let i = 0; i < SEGMENT_COUNT; i++) {
@@ -46,7 +51,7 @@ export function buildFillGeoJSON(): FeatureCollection {
 
 		features.push({
 			type: 'Feature',
-			properties: { zoom },
+			properties: { zoom, ...dataConfig },
 			geometry: {
 				type: 'Polygon',
 				coordinates: [
@@ -71,8 +76,13 @@ export function buildFillGeoJSON(): FeatureCollection {
  * Each segment spans one zoom step in longitude. The "zoom" property drives
  * line-color and line-width after expression rewriting, making the line
  * visually thicker/thinner and change color from left to right as zoom grows.
+ * `dataConfig` adds any user-chosen data field overrides (see
+ * DataConfigModal) so match/case expressions in the style evaluate against
+ * real values instead of always hitting their fallback branch.
  */
-export function buildLineGeoJSON(): FeatureCollection {
+export function buildLineGeoJSON(
+	dataConfig: Record<string, DataFieldValue> = {}
+): FeatureCollection {
 	const features: Feature<LineString>[] = [];
 
 	for (let i = 0; i < SEGMENT_COUNT; i++) {
@@ -82,7 +92,7 @@ export function buildLineGeoJSON(): FeatureCollection {
 
 		features.push({
 			type: 'Feature',
-			properties: { zoom },
+			properties: { zoom, ...dataConfig },
 			geometry: {
 				type: 'LineString',
 				// A single short segment along latitude 0 (the equator)

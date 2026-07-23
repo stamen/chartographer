@@ -4,6 +4,7 @@
 	import { buildLineGeoJSON } from '$lib/geojson';
 	import { RenderQueue } from '$lib/renderer';
 	import LayerBar from '$lib/components/LayerBar.svelte';
+	import DataConfigModal from '$lib/components/DataConfigModal.svelte';
 
 	const queue = new RenderQueue();
 
@@ -20,9 +21,11 @@
 	// correct pixel width for that zoom level.
 	// ---------------------------------------------------------------------------
 
-	// Build the shared line GeoJSON once — 220 short horizontal segments
-	// along the equator, each with its own "zoom" property.
-	const lineGeoJSON = buildLineGeoJSON();
+	// Shared line GeoJSON — 220 short horizontal segments along the equator,
+	// each with its own "zoom" property. Recomputed (and every bar
+	// re-rendered) whenever the user applies a data config change, since
+	// that changes feature properties that match/case expressions read.
+	let lineGeoJSON = $derived(buildLineGeoJSON(styleStore.dataConfig.line));
 
 	let lineLayers = $derived(styleStore.current ? extractLineLayers(styleStore.current) : []);
 
@@ -31,6 +34,7 @@
 
 <header class="page-header">
 	<h2>Line Layers <span class="count">({lineLayers.length})</span></h2>
+	<DataConfigModal layerType="line" />
 </header>
 
 {#if lineLayers.length === 0}
@@ -67,7 +71,16 @@
 
 <style lang="scss">
 	.page-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
 		margin-bottom: 16px;
+		padding: 16px 0;
+		position: sticky;
+		top: 45px;
+		background: #fff;
+		z-index: 5;
 	}
 
 	h2 {
