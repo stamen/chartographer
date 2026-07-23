@@ -18,8 +18,17 @@
 	// capture time and at stretch time).
 	// ---------------------------------------------------------------------------
 
-	let { backdropPaint, children }: {
+	let { backdropPaint, totalWidth, children }: {
 		backdropPaint: Record<string, unknown>;
+		// Total row width (label + gap + map-container), only needed when a
+		// page uses a fixed/scrollable width (symbols) instead of the
+		// default flex-to-viewport sizing (fill/line). Without it, this
+		// wrapper's own width defaults to the viewport — its content simply
+		// overflows past it when children are wider, so the tile's
+		// background-size math below would be computed against the wrong
+		// (too-narrow) width and never line up with the actual scrollable
+		// content.
+		totalWidth?: number;
 		children: import('svelte').Snippet;
 	} = $props();
 
@@ -65,7 +74,12 @@
 
 <div
 	class="swatch-wrapper"
-	style="background-image: {dataUrl ? `url(${dataUrl})` : 'none'}; background-position: {LABEL_OFFSET}px 0; background-size: calc(100% - {LABEL_OFFSET}px) {SWATCH_HEIGHT}px;"
+	style="
+		background-image: {dataUrl ? `url(${dataUrl})` : 'none'};
+		background-position: {LABEL_OFFSET}px 0;
+		background-size: calc(100% - {LABEL_OFFSET}px) {SWATCH_HEIGHT}px;
+		{totalWidth !== undefined ? `width: ${totalWidth}px;` : ''}
+	"
 >
 	{@render children()}
 </div>

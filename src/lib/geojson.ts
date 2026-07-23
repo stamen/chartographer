@@ -133,6 +133,17 @@ const SYMBOL_ZOOM_STEP = 2;
  */
 export const SYMBOL_MARGIN_FRACTION = 0.15;
 
+/**
+ * Target pixel spacing between adjacent zoom samples on the symbols page.
+ * Unlike fill/line, symbol bars use a fixed render width (not the viewport
+ * width) and scroll horizontally — labels need real, consistent room
+ * regardless of window size, or wide labels at high zoom crowd into their
+ * neighbors. Adjust this single value if a style still crowds (larger
+ * text-size) or feels too sparse; the symbols page derives its total render
+ * width from it.
+ */
+export const SYMBOL_SAMPLE_SPACING_PX = 150;
+
 function symbolZoomToLon(zoom: number): number {
 	const usableSpan = 359.99 * (1 - 2 * SYMBOL_MARGIN_FRACTION);
 	const startLon = -180 + 359.99 * SYMBOL_MARGIN_FRACTION;

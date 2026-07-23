@@ -2,7 +2,11 @@
 	import { onDestroy } from 'svelte';
 	import { styleStore } from '$lib/styleStore.svelte';
 	import { extractSymbolLayers, extractBackgroundPaint } from '$lib/styleParser';
-	import { buildSymbolGeoJSON, SYMBOL_MARGIN_FRACTION } from '$lib/geojson';
+	import {
+		buildSymbolGeoJSON,
+		SYMBOL_MARGIN_FRACTION,
+		SYMBOL_SAMPLE_SPACING_PX
+	} from '$lib/geojson';
 	import { RenderQueue } from '$lib/renderer';
 	import LayerBar from '$lib/components/LayerBar.svelte';
 	import DataConfigModal from '$lib/components/DataConfigModal.svelte';
@@ -56,6 +60,20 @@
 
 	// Ticks align with the actual sample points (every 2 zoom levels).
 	const zoomTicks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22];
+
+	// Fixed render width — unlike fill/line, symbol bars don't fit the
+	// viewport; they scroll horizontally, so every zoom sample gets
+	// consistent room regardless of window size. Derived so the *usable*
+	// portion (after SYMBOL_MARGIN_FRACTION's margin on each side) has
+	// exactly SYMBOL_SAMPLE_SPACING_PX between adjacent samples.
+	const mapWidth = Math.round(
+		((zoomTicks.length - 1) * SYMBOL_SAMPLE_SPACING_PX) / (1 - 2 * SYMBOL_MARGIN_FRACTION)
+	);
+
+	// Label (220px) + gap (12px) + the map-container itself — the full
+	// scrollable row width, so BackgroundSwatch's tile lines up with the
+	// actual content instead of the (narrower) viewport.
+	const totalWidth = 232 + mapWidth;
 </script>
 
 <header class="page-header">
@@ -66,33 +84,40 @@
 {#if symbolLayers.length === 0}
 	<p class="empty">No symbol layers found in this style.</p>
 {:else}
-	<!-- Ticks are inset by SYMBOL_MARGIN_FRACTION on each side, matching
-	     where buildSymbolGeoJSON actually places each zoom sample. -->
-	<div class="zoom-ruler">
-		{#each zoomTicks as z}
-			<span
-				class="tick"
-				style="left: {(SYMBOL_MARGIN_FRACTION + (z / 22) * (1 - 2 * SYMBOL_MARGIN_FRACTION)) * 100}%"
-				>{z}</span
-			>
-		{/each}
-	</div>
+	<!-- Symbol bars use a fixed render width and scroll horizontally instead
+	     of fitting the viewport — labels need real, consistent room. The
+	     label column (sticky, in LayerBar.svelte) stays pinned while this
+	     scrolls. -->
+	<div class="scroll-area">
+		<!-- Ticks are inset by SYMBOL_MARGIN_FRACTION on each side, matching
+		     where buildSymbolGeoJSON actually places each zoom sample. -->
+		<div class="zoom-ruler" style="width: {mapWidth}px">
+			{#each zoomTicks as z}
+				<span
+					class="tick"
+					style="left: {(SYMBOL_MARGIN_FRACTION + (z / 22) * (1 - 2 * SYMBOL_MARGIN_FRACTION)) * 100}%"
+					>{z}</span
+				>
+			{/each}
+		</div>
 
-	<BackgroundSwatch {backdropPaint}>
-		{#each symbolLayers as layer (layer.id)}
-			<LayerBar
-				layerId={layer.id}
-				layerType="symbol"
-				layout={layer.layout}
-				paint={layer.paint}
-				geojson={symbolGeoJSON}
-				height={60}
-				{glyphs}
-				{sprite}
-				{queue}
-			/>
-		{/each}
-	</BackgroundSwatch>
+		<BackgroundSwatch {backdropPaint} {totalWidth}>
+			{#each symbolLayers as layer (layer.id)}
+				<LayerBar
+					layerId={layer.id}
+					layerType="symbol"
+					layout={layer.layout}
+					paint={layer.paint}
+					geojson={symbolGeoJSON}
+					height={60}
+					{glyphs}
+					{sprite}
+					{mapWidth}
+					{queue}
+				/>
+			{/each}
+		</BackgroundSwatch>
+	</div>
 {/if}
 
 <style lang="scss">
@@ -123,6 +148,10 @@
 	.empty {
 		color: #666;
 		font-size: 14px;
+	}
+
+	.scroll-area {
+		overflow-x: auto;
 	}
 
 	.zoom-ruler {

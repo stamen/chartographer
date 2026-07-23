@@ -12,6 +12,7 @@
 		height = 50,
 		glyphs,
 		sprite,
+		mapWidth,
 		label = layerId,
 		queue
 	}: {
@@ -23,6 +24,10 @@
 		height?: number;
 		glyphs?: string;
 		sprite?: string;
+		// Fixed render width in px, overriding the default flex:1 (fill to
+		// container) sizing — only the symbols page uses this, for a fixed
+		// scrollable width instead of a viewport-relative one.
+		mapWidth?: number;
 		label?: string;
 		queue: RenderQueue;
 	} = $props();
@@ -91,7 +96,12 @@
 <div class="layer-bar" style="--bar-height: {height}px">
 	<div class="label" title={label}>{label}</div>
 
-	<div class="map-container" bind:this={container}>
+	<div
+		class="map-container"
+		class:fixed-width={mapWidth !== undefined}
+		style={mapWidth !== undefined ? `width: ${mapWidth}px;` : ''}
+		bind:this={container}
+	>
 		{#if dataUrl}
 			<img src={dataUrl} alt="" width={container?.clientWidth} {height} />
 		{:else if renderError}
@@ -122,6 +132,15 @@
 		white-space: nowrap;
 		display: flex;
 		align-items: center;
+		// Stays pinned to the viewport's left edge when an ancestor scrolls
+		// horizontally (the symbols page) — a no-op elsewhere, since sticky
+		// positioning only has an effect inside a scrolling container.
+		// The opaque background keeps scrolled-past content from bleeding
+		// through underneath it.
+		position: sticky;
+		left: 0;
+		z-index: 2;
+		background: #fff;
 	}
 
 	.map-container {
@@ -134,6 +153,10 @@
 		// list shows through wherever this bar's own render doesn't cover
 		// (there's no per-bar backdrop layer anymore — see renderer.ts).
 		background: transparent;
+
+		&.fixed-width {
+			flex: none;
+		}
 
 		img {
 			display: block;
