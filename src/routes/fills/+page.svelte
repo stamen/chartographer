@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { styleStore } from '$lib/styleStore.svelte';
-	import { extractFillLayers } from '$lib/styleParser';
+	import { extractFillLayers, extractBackgroundPaint } from '$lib/styleParser';
 	import { buildFillGeoJSON } from '$lib/geojson';
 	import { RenderQueue } from '$lib/renderer';
 	import LayerBar from '$lib/components/LayerBar.svelte';
 	import DataConfigModal from '$lib/components/DataConfigModal.svelte';
+	import BackgroundSwatch from '$lib/components/BackgroundSwatch.svelte';
 
 	const queue = new RenderQueue();
 
@@ -26,6 +27,15 @@
 
 	// Reactively re-extract layers whenever the loaded style changes.
 	let fillLayers = $derived(styleStore.current ? extractFillLayers(styleStore.current) : []);
+
+	// The backdrop drawn behind every bar, derived from the style's own
+	// background layer — falls back to this page's previous default color
+	// when the style has none.
+	let backdropPaint = $derived(
+		styleStore.current
+			? extractBackgroundPaint(styleStore.current, '#e8e8e8')
+			: { 'fill-color': '#e8e8e8' }
+	);
 
 	// Zoom tick marks to display above the bars.
 	const zoomTicks = [0, 5, 10, 15, 20, 22];
@@ -53,30 +63,32 @@
 		showing that color across zoom levels. Both bars share the same 220-segment
 		GeoJSON so their horizontal extents align exactly.
 	-->
-	{#each fillLayers as layer (layer.id)}
-		<div class="fill-group">
-			<LayerBar
-				layerId={layer.id}
-				layerType="fill"
-				layout={layer.layout}
-				paint={layer.paint}
-				geojson={fillGeoJSON}
-				height={50}
-				{queue}
-			/>
-			{#if layer.outlinePaint}
+	<BackgroundSwatch {backdropPaint}>
+		{#each fillLayers as layer (layer.id)}
+			<div class="fill-group">
 				<LayerBar
-					layerId="{layer.id}--outline"
-					label=""
+					layerId={layer.id}
 					layerType="fill"
-					paint={layer.outlinePaint}
+					layout={layer.layout}
+					paint={layer.paint}
 					geojson={fillGeoJSON}
-					height={4}
+					height={50}
 					{queue}
 				/>
-			{/if}
-		</div>
-	{/each}
+				{#if layer.outlinePaint}
+					<LayerBar
+						layerId="{layer.id}--outline"
+						label=""
+						layerType="fill"
+						paint={layer.outlinePaint}
+						geojson={fillGeoJSON}
+						height={4}
+						{queue}
+					/>
+				{/if}
+			</div>
+		{/each}
+	</BackgroundSwatch>
 {/if}
 
 <style lang="scss">
@@ -113,7 +125,7 @@
 	// Removes the gap between the two bars so the strip reads as part of
 	// the same layer, then restores spacing below the whole group.
 	.fill-group {
-		margin-bottom: 2px;
+		margin-bottom: 10px;
 
 		// Cancel the inner LayerBar margins so bars butt up against each other.
 		:global(.layer-bar) {

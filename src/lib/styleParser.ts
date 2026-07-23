@@ -85,3 +85,33 @@ export function extractLineLayers(style: StyleSpecification): VisLineLayer[] {
 			}
 		}));
 }
+
+/**
+ * Extracts the style's background layer paint (if any), rewritten the same
+ * way as every other layer, and remapped to fill-color/fill-opacity so it
+ * can be drawn as a real fill layer over real geometry — see renderer.ts for
+ * why that's necessary (MapLibre's background layer type is sourceless, so
+ * it can't vary across our synthetic zoom segments the way every other
+ * layer does). background-pattern is ignored — patterns need a sprite atlas
+ * we don't load. Falls back to `fallbackColor` when the style has no
+ * background layer, or the layer doesn't set a color.
+ */
+export function extractBackgroundPaint(
+	style: StyleSpecification,
+	fallbackColor: string
+): Record<string, unknown> {
+	const bgLayer = style.layers.find((l) => l.type === 'background') as
+		| { paint?: Record<string, never> }
+		| undefined;
+
+	if (!bgLayer?.paint) return { 'fill-color': fallbackColor };
+
+	const rewritten = rewritePaint(bgLayer.paint);
+	const paint: Record<string, unknown> = {
+		'fill-color': rewritten['background-color'] ?? fallbackColor
+	};
+	if ('background-opacity' in rewritten) {
+		paint['fill-opacity'] = rewritten['background-opacity'];
+	}
+	return paint;
+}

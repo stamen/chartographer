@@ -9,6 +9,11 @@ import type { FeatureCollection } from 'geojson';
 //
 // This keeps the WebGL context count to one per page regardless of how many
 // layers the loaded style contains.
+//
+// Canvases render with a transparent background wherever nothing is drawn
+// (there's no background/backdrop layer here) — the shared background swatch
+// behind the whole bar list (see BackgroundSwatch.svelte) shows through those
+// gaps, rather than every bar baking its own copy of it into its own capture.
 // ---------------------------------------------------------------------------
 
 interface RenderJob {
@@ -17,7 +22,6 @@ interface RenderJob {
 	paint: Record<string, unknown>;
 	layout: Record<string, unknown>;
 	geojson: FeatureCollection;
-	backgroundColor: string;
 	width: number;
 	height: number;
 	resolve: (dataUrl: string) => void;
@@ -106,11 +110,6 @@ export class RenderQueue {
 					},
 					layers: [
 						{
-							id: 'background',
-							type: 'background',
-							paint: { 'background-color': job.backgroundColor }
-						},
-						{
 							id: '__layer__',
 							type: job.layerType as 'fill' | 'line',
 							source: 'zoom-segments',
@@ -149,18 +148,15 @@ export class RenderQueue {
 				job.geojson
 			);
 
-			// Swap the background color.
-			this.map.setPaintProperty('background', 'background-color', job.backgroundColor);
-
 			const needsRecreate = CROSS_FADED_PAINT_PROPS.some(
 				(key) => isExpressionValue(this.prevPaint[key]) !== isExpressionValue(job.paint[key])
 			);
 
 			if (needsRecreate) {
-				// Let the setData()/background-color mutation above fully
-				// settle before tearing down the layer — recreating it while
-				// a source reload is still in flight is what causes a rare,
-				// non-fatal, self-recovering console error here.
+				// Let the setData() mutation above fully settle before tearing
+				// down the layer — recreating it while a source reload is
+				// still in flight is what causes a rare, non-fatal,
+				// self-recovering console error here.
 				await this.waitIdle();
 
 				// See CROSS_FADED_PAINT_PROPS above — mutating in place here

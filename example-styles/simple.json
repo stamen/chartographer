@@ -6,6 +6,13 @@
   },
   "layers": [
     {
+      "id": "land",
+      "type": "background",
+      "paint": {
+        "background-color": ["interpolate", ["linear"], ["zoom"], 0, "#fafafa", 10, "#cccccc", 22, "#333333"]
+      }
+    },
+    {
       "id": "fill-literal",
       "type": "fill",
       "source": "dummy",

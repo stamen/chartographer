@@ -9,7 +9,6 @@
 		layout = {},
 		geojson,
 		height = 50,
-		backgroundColor = '#e8e8e8',
 		label = layerId,
 		queue
 	}: {
@@ -19,7 +18,6 @@
 		layout?: Record<string, unknown>;
 		geojson: FeatureCollection;
 		height?: number;
-		backgroundColor?: string;
 		label?: string;
 		queue: RenderQueue;
 	} = $props();
@@ -44,7 +42,15 @@
 		renderError = null;
 
 		queue
-			.enqueue({ layerId, layerType, paint, layout, geojson: currentGeojson, backgroundColor, width, height })
+			.enqueue({
+				layerId,
+				layerType,
+				paint,
+				layout,
+				geojson: currentGeojson,
+				width,
+				height
+			})
 			.then((url) => {
 				if (generation !== renderGeneration) return;
 				dataUrl = url;
@@ -98,7 +104,10 @@
 		overflow: hidden;
 		border-radius: 2px;
 		position: relative;
-		background: #e0e0e0;
+		// Transparent so the shared BackgroundSwatch behind the whole bar
+		// list shows through wherever this bar's own render doesn't cover
+		// (there's no per-bar backdrop layer anymore — see renderer.ts).
+		background: transparent;
 
 		img {
 			display: block;

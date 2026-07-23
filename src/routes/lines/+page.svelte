@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { styleStore } from '$lib/styleStore.svelte';
-	import { extractLineLayers } from '$lib/styleParser';
+	import { extractLineLayers, extractBackgroundPaint } from '$lib/styleParser';
 	import { buildLineGeoJSON } from '$lib/geojson';
 	import { RenderQueue } from '$lib/renderer';
 	import LayerBar from '$lib/components/LayerBar.svelte';
 	import DataConfigModal from '$lib/components/DataConfigModal.svelte';
+	import BackgroundSwatch from '$lib/components/BackgroundSwatch.svelte';
 
 	const queue = new RenderQueue();
 
@@ -28,6 +29,16 @@
 	let lineGeoJSON = $derived(buildLineGeoJSON(styleStore.dataConfig.line));
 
 	let lineLayers = $derived(styleStore.current ? extractLineLayers(styleStore.current) : []);
+
+	// The backdrop drawn behind every bar, derived from the style's own
+	// background layer — falls back to this page's previous default dark
+	// color (thin/light lines need a dark backdrop to stay visible) when
+	// the style has none.
+	let backdropPaint = $derived(
+		styleStore.current
+			? extractBackgroundPaint(styleStore.current, '#1a1a1a')
+			: { 'fill-color': '#1a1a1a' }
+	);
 
 	const zoomTicks = [0, 5, 10, 15, 20, 22];
 </script>
@@ -55,18 +66,19 @@
 		the list scannable. Line-width is in screen pixels regardless of map zoom,
 		so at zoom 22 a 12px road occupies 12/100 = 12% of the bar height.
 	-->
-	{#each lineLayers as layer (layer.id)}
-		<LayerBar
-			layerId={layer.id}
-			layerType="line"
-			layout={layer.layout}
-			paint={layer.paint}
-			geojson={lineGeoJSON}
-			height={100}
-			backgroundColor="#1a1a1a"
-			{queue}
-		/>
-	{/each}
+	<BackgroundSwatch {backdropPaint}>
+		{#each lineLayers as layer (layer.id)}
+			<LayerBar
+				layerId={layer.id}
+				layerType="line"
+				layout={layer.layout}
+				paint={layer.paint}
+				geojson={lineGeoJSON}
+				height={100}
+				{queue}
+			/>
+		{/each}
+	</BackgroundSwatch>
 {/if}
 
 <style lang="scss">
