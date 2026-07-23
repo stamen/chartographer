@@ -3,7 +3,7 @@ import type {
 	FillLayerSpecification,
 	LineLayerSpecification
 } from 'maplibre-gl';
-import { rewritePaint } from './expressionRewriter';
+import { rewritePaint, rewriteTextField } from './expressionRewriter';
 
 // ---------------------------------------------------------------------------
 // Style parser
@@ -47,6 +47,12 @@ export interface VisLineLayer {
 	layout: Record<string, unknown>;
 }
 
+export interface VisSymbolLayer {
+	id: string;
+	paint: Record<string, unknown>;
+	layout: Record<string, unknown>;
+}
+
 export function extractFillLayers(style: StyleSpecification): VisFillLayer[] {
 	return style.layers
 		.filter((l): l is FillLayerSpecification => l.type === 'fill')
@@ -84,6 +90,38 @@ export function extractLineLayers(style: StyleSpecification): VisLineLayer[] {
 				'line-join': 'miter'
 			}
 		}));
+}
+
+export function extractSymbolLayers(style: StyleSpecification): VisSymbolLayer[] {
+	return style.layers
+		.filter((l) => l.type === 'symbol')
+		.map((rawLayer) => {
+			const layer = rawLayer as unknown as {
+				id: string;
+				paint?: Record<string, never>;
+				layout?: Record<string, never>;
+			};
+			const paint = rewritePaint(layer.paint ?? {});
+			const layout = rewritePaint(layer.layout ?? {});
+
+			if ('text-field' in layout) {
+				layout['text-field'] = rewriteTextField(layout['text-field'] as never) as never;
+			}
+
+			// Force every sample to render regardless of the style's own
+			// collision settings — without this, MapLibre's collision
+			// detection can hide some of our zoom samples as "overlapping"
+			// with their neighbors, which would look like a rendering bug.
+			// Points can't be placed "along a line" either, so pin placement
+			// to plain points regardless of what the style specifies.
+			layout['text-allow-overlap'] = true;
+			layout['icon-allow-overlap'] = true;
+			layout['text-ignore-placement'] = true;
+			layout['icon-ignore-placement'] = true;
+			layout['symbol-placement'] = 'point';
+
+			return { id: layer.id, paint, layout };
+		});
 }
 
 /**

@@ -22,6 +22,7 @@
 			<span class="brand">Chartographer</span>
 			<a href="/fills">Fills</a>
 			<a href="/lines">Lines</a>
+			<a href="/symbols">Symbols</a>
 			<!-- Unload the style and return to the drop-zone screen -->
 			<button class="unload" onclick={() => styleStore.clear()}>✕ Unload style</button>
 		</nav>

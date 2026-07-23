@@ -18,10 +18,14 @@ import type { FeatureCollection } from 'geojson';
 
 interface RenderJob {
 	layerId: string;
-	layerType: 'fill' | 'line';
+	layerType: 'fill' | 'line' | 'symbol';
 	paint: Record<string, unknown>;
 	layout: Record<string, unknown>;
 	geojson: FeatureCollection;
+	// Only meaningful for symbol layers — text-font/icon-image need these to
+	// resolve real glyphs/sprite icons. Undefined for fill/line jobs.
+	glyphs?: string;
+	sprite?: string;
 	width: number;
 	height: number;
 	resolve: (dataUrl: string) => void;
@@ -57,6 +61,8 @@ export class RenderQueue {
 	private mapHeight = 0;
 	private prevPaint: Record<string, unknown> = {};
 	private prevLayout: Record<string, unknown> = {};
+	private prevGlyphs: string | undefined;
+	private prevSprite: string | undefined;
 
 	enqueue(job: Omit<RenderJob, 'resolve' | 'reject'>): Promise<string> {
 		return new Promise((resolve, reject) => {
@@ -105,13 +111,19 @@ export class RenderQueue {
 				container: this.container,
 				style: {
 					version: 8,
+					// MapLibre's style validation rejects an explicit
+					// `undefined` value for these — they must be either a
+					// real string or the key absent entirely (fill/line jobs
+					// never set them).
+					...(job.glyphs !== undefined ? { glyphs: job.glyphs } : {}),
+					...(job.sprite !== undefined ? { sprite: job.sprite } : {}),
 					sources: {
 						'zoom-segments': { type: 'geojson', data: job.geojson }
 					},
 					layers: [
 						{
 							id: '__layer__',
-							type: job.layerType as 'fill' | 'line',
+							type: job.layerType,
 							source: 'zoom-segments',
 							layout: job.layout as never,
 							paint: job.paint as never
@@ -147,6 +159,12 @@ export class RenderQueue {
 			(this.map.getSource('zoom-segments') as import('maplibre-gl').GeoJSONSource).setData(
 				job.geojson
 			);
+
+			// Only relevant for symbol layers, and only actually changes when
+			// a different style is loaded on the same page (glyphs/sprite are
+			// shared across every layer on a page, unlike per-layer paint).
+			if (job.glyphs !== this.prevGlyphs) this.map.setGlyphs(job.glyphs ?? null);
+			if (job.sprite !== this.prevSprite) this.map.setSprite(job.sprite ?? null);
 
 			const needsRecreate = CROSS_FADED_PAINT_PROPS.some(
 				(key) => isExpressionValue(this.prevPaint[key]) !== isExpressionValue(job.paint[key])
@@ -202,6 +220,8 @@ export class RenderQueue {
 
 		this.prevPaint = job.paint;
 		this.prevLayout = job.layout;
+		this.prevGlyphs = job.glyphs;
+		this.prevSprite = job.sprite;
 
 		await this.waitIdle();
 

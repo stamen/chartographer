@@ -1,4 +1,4 @@
-import type { FeatureCollection, Feature, Polygon, LineString } from 'geojson';
+import type { FeatureCollection, Feature, Polygon, LineString, Point } from 'geojson';
 import type { DataFieldValue } from './dataFieldCollector';
 
 // ---------------------------------------------------------------------------
@@ -21,9 +21,16 @@ const ZOOM_STEP = 0.1;
 const ZOOM_MAX = 22;
 const SEGMENT_COUNT = Math.round(ZOOM_MAX / ZOOM_STEP); // 220
 
-/** Map a zoom level (0–22) to a longitude (-180 to +180). */
+/**
+ * Map a zoom level (0–22) to a longitude, stopping just short of +180
+ * rather than reaching it exactly. MapLibre normalizes longitude to
+ * [-180, 180) — +180 wraps down to exactly -180 — so a point or segment
+ * boundary placed at true +180 renders on top of the zoom-0 one instead of
+ * at the right edge. Only ~0.01° short of the true edge, imperceptible at
+ * this scale.
+ */
 function zoomToLon(zoom: number): number {
-	return -180 + (zoom / ZOOM_MAX) * 360;
+	return -180 + (zoom / ZOOM_MAX) * 359.99;
 }
 
 /**
@@ -100,6 +107,58 @@ export function buildLineGeoJSON(
 					[lonA, 0],
 					[lonB, 0]
 				]
+			}
+		});
+	}
+
+	return { type: 'FeatureCollection', features };
+}
+
+/** Step size between symbol samples — every 2 zoom levels (12 points across
+ * 0–22), much sparser than fill/line's 220 segments, since labels need real
+ * horizontal room or every sample would overlap into an illegible smear. */
+const SYMBOL_ZOOM_STEP = 2;
+
+/**
+ * Fraction of the bar width reserved as empty margin on each side, for
+ * symbols only. Text labels are usually center-anchored, so a label at
+ * zoom 0 or 22 (placed exactly at the world edge, like fill/line's content)
+ * would have roughly half its width extending past the edge — and
+ * MapLibre's symbol placement, observed directly, doesn't just clip that
+ * overflow: it can wrap-place the label onto the *opposite* edge instead
+ * (the antimeridian-equivalent position), since a label anchored right at
+ * the edge is ambiguous between the two. Insetting zoom 0/22 away from the
+ * true edges avoids that ambiguity. 0.15 leaves the middle 70% of the bar
+ * for content — matches the zoom-ruler tick positions in +page.svelte.
+ */
+export const SYMBOL_MARGIN_FRACTION = 0.15;
+
+function symbolZoomToLon(zoom: number): number {
+	const usableSpan = 359.99 * (1 - 2 * SYMBOL_MARGIN_FRACTION);
+	const startLon = -180 + 359.99 * SYMBOL_MARGIN_FRACTION;
+	return startLon + (zoom / ZOOM_MAX) * usableSpan;
+}
+
+/**
+ * Build symbol GeoJSON: one point every 2 zoom levels along the equator,
+ * inset from the bar's true edges by SYMBOL_MARGIN_FRACTION (see above).
+ *
+ * The "zoom" property on each feature drives text-size/icon-size (and
+ * anything else zoom-dependent) after expression rewriting. `dataConfig`
+ * adds any user-chosen data field overrides, same as fill/line.
+ */
+export function buildSymbolGeoJSON(
+	dataConfig: Record<string, DataFieldValue> = {}
+): FeatureCollection {
+	const features: Feature<Point>[] = [];
+
+	for (let zoom = 0; zoom <= ZOOM_MAX; zoom += SYMBOL_ZOOM_STEP) {
+		features.push({
+			type: 'Feature',
+			properties: { zoom, ...dataConfig },
+			geometry: {
+				type: 'Point',
+				coordinates: [symbolZoomToLon(zoom), 0]
 			}
 		});
 	}

@@ -10,15 +10,19 @@
 		layout = {},
 		geojson,
 		height = 50,
+		glyphs,
+		sprite,
 		label = layerId,
 		queue
 	}: {
 		layerId: string;
-		layerType: 'fill' | 'line';
+		layerType: 'fill' | 'line' | 'symbol';
 		paint: Record<string, unknown>;
 		layout?: Record<string, unknown>;
 		geojson: FeatureCollection;
 		height?: number;
+		glyphs?: string;
+		sprite?: string;
 		label?: string;
 		queue: RenderQueue;
 	} = $props();
@@ -44,6 +48,8 @@
 			paint,
 			layout,
 			geojson: currentGeojson,
+			glyphs,
+			sprite,
 			width,
 			height
 		});
@@ -65,6 +71,8 @@
 				paint,
 				layout,
 				geojson: currentGeojson,
+				glyphs,
+				sprite,
 				width,
 				height
 			})

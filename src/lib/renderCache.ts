@@ -12,10 +12,12 @@
 // ---------------------------------------------------------------------------
 
 interface CacheableJob {
-	layerType: 'fill' | 'line';
+	layerType: 'fill' | 'line' | 'symbol';
 	paint: Record<string, unknown>;
 	layout: Record<string, unknown>;
 	geojson: unknown;
+	glyphs?: string;
+	sprite?: string;
 	width: number;
 	height: number;
 }
