@@ -11,6 +11,7 @@
 	import LayerBar from '$lib/components/LayerBar.svelte';
 	import DataConfigModal from '$lib/components/DataConfigModal.svelte';
 	import BackgroundSwatch from '$lib/components/BackgroundSwatch.svelte';
+	import SpriteViewerModal from '$lib/components/SpriteViewerModal.svelte';
 
 	const queue = new RenderQueue();
 	// Otherwise this page's hidden MapLibre instance (and its WebGL context)
@@ -78,7 +79,10 @@
 
 <header class="page-header">
 	<h2>Symbol Layers <span class="count">({symbolLayers.length})</span></h2>
-	<DataConfigModal layerType="symbol" />
+	<div class="header-actions">
+		<SpriteViewerModal {sprite} />
+		<DataConfigModal layerType="symbol" />
+	</div>
 </header>
 
 {#if symbolLayers.length === 0}
@@ -132,6 +136,12 @@
 		top: 45px;
 		background: #fff;
 		z-index: 5;
+	}
+
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 	}
 
 	h2 {
