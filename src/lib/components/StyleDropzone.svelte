@@ -56,7 +56,7 @@
 >
 	<div class="inner">
 		<h1 class="title">Chartographer</h1>
-		<p class="subtitle">Drop a Mapbox or Maplibre style JSON to get started</p>
+		<p class="subtitle">Drop a Maplibre style JSON to get started</p>
 
 		{#if errorMessage}
 			<p class="error">{errorMessage}</p>
